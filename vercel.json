@@ -1,0 +1,7 @@
+{
+  "framework": null,
+  "installCommand": "cd caritesportfolio && npm ci",
+  "buildCommand": "cd caritesportfolio && npm run build",
+  "outputDirectory": "caritesportfolio/dist",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}
