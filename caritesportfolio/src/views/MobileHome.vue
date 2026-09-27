@@ -3,33 +3,30 @@
     <!-- Feed vertical: las imágenes de las secciones, de distintos anchos y con su
          texto debajo. Se van agregando rondas al bajar, así no se acaba -->
     <div ref="feed" class="m-feed" @scroll.passive="onScroll">
-      <template v-for="round in rounds" :key="round">
-        <component
-          :is="item.to ? 'RouterLink' : 'div'"
-          v-for="(item, i) in items"
-          :key="`${round}-${item.name}`"
-          :to="item.to"
-          class="m-card"
-          :class="`m-card-${item.shape}`"
-          :style="cardStyle(round - 1, i)"
-        >
-          <img class="m-card-img" :src="item.img" :alt="item.name">
-          <img class="m-card-label" :src="`/labels/${item.name}.png`" alt="">
-        </component>
-      </template>
+      <!-- En la intro, este contenedor sale del cuadro negro del centro, se abre en
+           vertical formando una columna con las 5 imágenes y desde ahí se expande
+           hasta su tamaño real, en una sola animación -->
+      <div ref="inner" class="m-feed-inner">
+        <template v-for="round in rounds" :key="round">
+          <component
+            :is="item.to ? 'RouterLink' : 'div'"
+            v-for="(item, i) in items"
+            :key="`${round}-${item.name}`"
+            :to="item.to"
+            class="m-card"
+            :class="[`m-card-${item.shape}`, { 'm-card-later': round > 1 }]"
+            :style="cardStyle(round - 1, i)"
+          >
+            <img class="m-card-img" :src="item.img" :alt="item.name">
+            <img class="m-card-label" :src="`/labels/${item.name}.png`" alt="">
+          </component>
+        </template>
+      </div>
     </div>
 
-    <!-- Intro: un cuadrado negro en el centro que se abre en una fila de miniaturas -->
+    <!-- Intro: cuadro negro que sube hasta el centro; de él se abren las imágenes -->
     <div class="m-intro" aria-hidden="true">
       <span class="m-dot"></span>
-      <img
-        v-for="(thumb, k) in thumbs"
-        :key="k"
-        class="m-thumb"
-        :src="thumb"
-        alt=""
-        :style="{ '--tx': (k - (thumbs.length - 1) / 2) * THUMB_GAP + 'px' }"
-      >
     </div>
   </main>
 </template>
@@ -43,14 +40,17 @@ const WIDTHS = {
   wide: [86, 80, 90],
   tall: [52, 44, 58, 48]
 }
-const THUMB_GAP = 26 // separación entre miniaturas de la fila, en px
 const MAX_ROUNDS = 40
+const DOT_SIZE = 14 // lado del cuadro negro, en px
 
-// Intro: cuadrado que sube (DOT) → fila de miniaturas (STRIP) → feed (FEED) → listo
-const DOT_MS = 300 // espera tras el welcome antes de que suba el cuadrado
-const STRIP_MS = 1300 // el cuadrado, ya en el centro, se abre en la fila
-const FEED_MS = 2100 // la fila se va y aparecen las imágenes
-const DONE_MS = 3500 // fin de la intro: se quitan sus clases
+const COLUMN_HEIGHT = 120 // alto de la columna de imágenes al abrirse, en px
+
+// Intro: el cuadro sube (DOT) → se abre en una columna con las 5 imágenes y
+// esa columna se expande hasta su lugar (FEED) → listo
+const DOT_MS = 300 // espera tras el welcome antes de que suba el cuadro
+const OPEN_MS = 1250 // el cuadro ya llegó al centro: empieza a abrirse
+const COLUMN_MS = 700 // abrirse en vertical hasta formar la columna
+const EXPAND_MS = 1600 // expandirse desde la columna hasta el tamaño real
 
 export default {
   name: 'MobileHome',
@@ -59,15 +59,8 @@ export default {
     return {
       items: sections,
       rounds: 4,
-      // 'idle' | 'dot' | 'strip' | 'feed' | 'done'
-      phase: 'done',
-      THUMB_GAP
-    }
-  },
-  computed: {
-    // Una miniatura por sección para la fila de la intro
-    thumbs() {
-      return this.items.map((item) => item.img)
+      // 'idle' | 'dot' | 'feed' | 'done'
+      phase: 'done'
     }
   },
   mounted() {
@@ -84,25 +77,64 @@ export default {
   },
   beforeUnmount() {
     (this.timers || []).forEach(clearTimeout)
+    if (this.animation) this.animation.cancel()
   },
   methods: {
     runIntro() {
-      const at = (ms, phase) => setTimeout(() => { this.phase = phase }, ms)
       this.timers = [
-        at(DOT_MS, 'dot'),
-        at(STRIP_MS, 'strip'),
-        at(FEED_MS, 'feed'),
-        at(DONE_MS, 'done')
+        setTimeout(() => { this.phase = 'dot' }, DOT_MS),
+        setTimeout(() => this.grow(), OPEN_MS)
       ]
+    },
+    // Una sola animación sobre las 5 imágenes: salen del cuadro negro, se abren en
+    // vertical hasta formar una columna y desde ahí se expanden a su tamaño real
+    grow() {
+      const inner = this.$refs.inner
+      const cards = inner.children
+      // Solo se anima el bloque de la primera ronda; las siguientes esperan ocultas
+      const n = Math.min(this.items.length, cards.length)
+      if (!n || !inner.animate) {
+        this.phase = 'done'
+        return
+      }
+      // Bloque de las 5 imágenes, medido sin transformar
+      const top = cards[0].offsetTop - inner.offsetTop
+      const last = cards[n - 1]
+      const bottom = last.offsetTop - inner.offsetTop + last.offsetHeight
+      const middle = (top + bottom) / 2
+      const screenCenter = this.$refs.feed.clientHeight / 2
+
+      // Transformación que deja el centro del bloque en el centro de la pantalla
+      // con la escala dada (horizontal sx, vertical sy)
+      const centered = (sx, sy) =>
+        `translateY(${screenCenter - inner.offsetTop - sy * middle}px) scale(${sx}, ${sy})`
+      const column = COLUMN_HEIGHT / (bottom - top)
+      const dot = DOT_SIZE / (bottom - top)
+
+      this.phase = 'feed'
+      const total = COLUMN_MS + EXPAND_MS
+      const animation = inner.animate(
+        [
+          // Del tamaño del cuadro negro...
+          { transform: centered(column, dot), easing: 'cubic-bezier(0.33, 1, 0.68, 1)' },
+          // ...se abre en vertical hasta formar la columna...
+          {
+            offset: COLUMN_MS / total,
+            transform: centered(column, column),
+            easing: 'cubic-bezier(0.65, 0, 0.35, 1)'
+          },
+          // ...y se expande hasta su lugar
+          { transform: 'translateY(0px) scale(1, 1)' }
+        ],
+        { duration: total }
+      )
+      animation.onfinish = () => { this.phase = 'done' }
+      this.animation = animation
     },
     cardStyle(round, i) {
       const n = round * this.items.length + i
       const widths = WIDTHS[this.items[i].shape] || WIDTHS.tall
-      return {
-        width: widths[n % widths.length] + '%',
-        // Solo las primeras imágenes aparecen escalonadas en la intro
-        '--k': n < 6 ? n : 0
-      }
+      return { width: widths[n % widths.length] + '%' }
     },
     // Al acercarse al final, agrega otra ronda de imágenes
     onScroll() {
@@ -137,15 +169,29 @@ export default {
   display: none;
 }
 
+.m-feed-inner {
+  transform-origin: 50% 0;
+}
+
+.phase-feed .m-feed-inner {
+  will-change: transform, opacity;
+}
+
 .m-card {
   display: block;
-  /* Además del % de ancho, ninguna imagen pasa del 58% del alto de la pantalla
-     (las imágenes son verticales: alto ≈ 1.5 × ancho) */
   margin: 0 auto 36px;
-  transform-origin: center;
-  transition:
-    opacity 0.7s ease calc(var(--k) * 90ms),
-    transform 0.9s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--k) * 90ms);
+}
+
+/* En la intro solo se ven las 5 primeras; las rondas siguientes aparecen al
+   terminar, cuando ya quedan fuera de la pantalla */
+.m-card-later {
+  transition: opacity 0.4s ease;
+}
+
+.phase-idle .m-card-later,
+.phase-dot .m-card-later,
+.phase-feed .m-card-later {
+  opacity: 0;
 }
 
 .m-card-img {
@@ -180,18 +226,15 @@ export default {
   margin: 8px auto 0;
 }
 
-/* Antes de la fase feed, las imágenes esperan pequeñas e invisibles */
-.phase-idle .m-card,
-.phase-dot .m-card,
-.phase-strip .m-card {
+/* Antes de abrirse, el feed espera invisible; la apertura la anima grow() */
+.phase-idle .m-feed-inner,
+.phase-dot .m-feed-inner {
   opacity: 0;
-  transform: scale(0.08);
 }
 
 /* En cuanto aparecen las imágenes (fase feed) ya se puede hacer scroll y tocar */
 .phase-idle .m-feed,
-.phase-dot .m-feed,
-.phase-strip .m-feed {
+.phase-dot .m-feed {
   pointer-events: none;
 }
 
@@ -203,8 +246,7 @@ export default {
   pointer-events: none;
 }
 
-.m-dot,
-.m-thumb {
+.m-dot {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -227,36 +269,14 @@ export default {
   opacity: 1;
 }
 
+/* 2. Al abrirse las imágenes, el cuadro se funde con ellas */
 .phase-dot .m-dot,
-.phase-strip .m-dot,
 .phase-feed .m-dot {
   translate: -50% -50%;
 }
 
-/* 2. Se abre en una fila de miniaturas que salen del centro */
-.m-thumb {
-  object-fit: cover;
-  translate: -50% -50%;
-  opacity: 0;
-  transition:
-    translate 0.7s cubic-bezier(0.65, 0, 0.35, 1),
-    opacity 0.35s ease;
-}
-
-.phase-strip .m-thumb {
-  opacity: 1;
-  translate: calc(-50% + var(--tx)) -50%;
-}
-
-/* 3. La fila se desvanece mientras aparecen las imágenes del feed */
-.phase-feed .m-thumb {
-  opacity: 0;
-  translate: calc(-50% + var(--tx)) -50%;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .m-card,
   .m-dot,
-  .m-thumb { transition: none; }
+  .m-card-later { transition: none; }
 }
 </style>
