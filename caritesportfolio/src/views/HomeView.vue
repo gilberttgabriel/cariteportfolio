@@ -1,13 +1,7 @@
 <template>
   <main class="page home">
-    <!-- Vista previa del fondo de cada página, visible al pasar el cursor -->
-    <div
-      v-for="item in pages"
-      :key="`bg-${item.name}`"
-      class="preview"
-      :class="{ 'is-active': active === item.name }"
-      :style="{ backgroundImage: `url(${item.bg})` }"
-    ></div>
+    <!-- Capa negro plomo que cubre la pantalla al pasar el cursor por una sección -->
+    <div class="preview" :class="{ 'is-active': active }"></div>
 
     <div class="scatter" :class="intro && `intro-${intro}`">
       <component
@@ -18,7 +12,7 @@
         class="item"
         :class="{ 'is-hidden': active && active !== item.name }"
         :style="itemStyle(item, index)"
-        @mouseenter="item.bg && (active = item.name)"
+        @mouseenter="active = item.name"
         @mouseleave="active = null"
       >
         <span :ref="(el) => (frames[item.name] = el)" class="item-frame">
@@ -45,7 +39,7 @@ export default {
   data() {
     return {
       items: sections,
-      // Sección con página que tiene el cursor encima
+      // Sección que tiene el cursor encima
       active: null,
       // Intro: null (sin intro), 'pending' (cuadrados en el centro) o 'run'
       intro: null,
@@ -56,19 +50,7 @@ export default {
   created() {
     this.frames = {}
   },
-  computed: {
-    pages() {
-      return this.items.filter((item) => item.bg)
-    }
-  },
   mounted() {
-    // Decodifica los fondos de antemano para que el primer hover no se trabe
-    this.pages.forEach((item) => {
-      const img = new Image()
-      img.src = item.bg
-      if (img.decode) img.decode().catch(() => {})
-    })
-
     // La intro solo corre en la primera carga, mientras el welcome sigue visible
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     // (welcomeDone llega ya desenvuelto: true/false, o null si no hay welcome)
@@ -120,17 +102,16 @@ export default {
 </script>
 
 <style>
+/* Inicio: blanco hueso liso */
 .home {
-  background-image: url('../assets/fondo1.webp');
+  background-color: #f4f1ea;
 }
 
-/* Fondo de la página en hover: cubre toda la pantalla. Es opaco para que
-   el concreto del inicio no se vea debajo; aparece con un fundido */
+/* En hover la pantalla se funde a negro plomo */
 .preview {
   position: absolute;
   inset: 0;
-  background-position: center;
-  background-size: cover;
+  background: #2b2d2f;
   opacity: 0;
   will-change: opacity;
   transition: opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1);
@@ -139,14 +120,6 @@ export default {
 
 .preview.is-active {
   opacity: 1;
-}
-
-/* Capa oscura sobre el fondo en hover; aparece y desaparece junto con él */
-.preview::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
 }
 
 /* Secciones repartidas de forma irregular por la pantalla.
@@ -210,7 +183,12 @@ export default {
   width: 100%;
   display: block;
   transform: translateZ(0);
-  transition: transform 0.25s ease-out;
+  transition: transform 0.25s ease-out, filter 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Sobre el negro plomo, el texto negro pasa a blanco para que se lea */
+.item:hover .item-label {
+  filter: invert(1);
 }
 
 /* Marco de la imagen: es lo que se mueve y se expande en la intro,
