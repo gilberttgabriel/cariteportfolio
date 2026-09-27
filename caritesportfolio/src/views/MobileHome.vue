@@ -50,7 +50,7 @@ const MAX_ROUNDS = 40
 const DOT_MS = 300 // espera tras el welcome antes de que suba el cuadrado
 const STRIP_MS = 1300 // el cuadrado, ya en el centro, se abre en la fila
 const FEED_MS = 2100 // la fila se va y aparecen las imágenes
-const DONE_MS = 3500 // fin de la intro: se habilita el toque
+const DONE_MS = 3500 // fin de la intro: se quitan sus clases
 
 export default {
   name: 'MobileHome',
@@ -188,10 +188,10 @@ export default {
   transform: scale(0.08);
 }
 
+/* En cuanto aparecen las imágenes (fase feed) ya se puede hacer scroll y tocar */
 .phase-idle .m-feed,
 .phase-dot .m-feed,
-.phase-strip .m-feed,
-.phase-feed .m-feed {
+.phase-strip .m-feed {
   pointer-events: none;
 }
 

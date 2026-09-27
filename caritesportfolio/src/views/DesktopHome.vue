@@ -31,7 +31,9 @@ import sections from '../sections'
 // hasta su lugar (una tras otra, STAGGER_MS de diferencia) y ahí se expande.
 const START_DELAY_MS = 400 // espera tras terminar el welcome
 const STAGGER_MS = 120
-const INTRO_TOTAL_MS = 3200 // cuando termina todo, se quitan las clases de la intro
+// Duración de la animación de cada imagen (debe coincidir con el CSS de .intro-run):
+// sube 900 ms, se expande 800 ms; el texto aparece a los 1400 ms y tarda 600 ms
+const ITEM_ANIM_MS = 2000
 
 export default {
   name: 'DesktopHome',
@@ -94,7 +96,7 @@ export default {
         this.intro = 'run'
         setTimeout(() => {
           this.intro = null
-        }, INTRO_TOTAL_MS + STAGGER_MS * this.items.length)
+        }, STAGGER_MS * (this.items.length - 1) + ITEM_ANIM_MS)
       }, START_DELAY_MS)
     }
   }
@@ -199,8 +201,9 @@ export default {
 }
 
 /* --- Intro --- */
-.intro-pending,
-.intro-run {
+/* Solo se bloquea el cursor mientras las imágenes esperan fuera de la pantalla;
+   en cuanto empiezan a subir ya se pueden tocar */
+.intro-pending {
   pointer-events: none;
 }
 
