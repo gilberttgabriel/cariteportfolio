@@ -71,6 +71,8 @@ body {
   color: #1a1a1a;
   position: relative;
   height: 100vh;
+  /* En celulares, dvh descuenta las barras del navegador */
+  height: 100dvh;
   overflow: hidden;
   background: #182b3c;
 }
@@ -175,6 +177,18 @@ body {
   height: clamp(64px, 14vh, 130px);
   width: auto;
   display: block;
+}
+
+/* Celular: ícono más chico y centrado arriba */
+@media (max-width: 700px) {
+  .site-header {
+    justify-content: center;
+    padding: 14px 16px;
+  }
+
+  .site-icon {
+    height: 56px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
