@@ -1,5 +1,5 @@
 <template>
-  <main class="page home" :class="{ 'texts-in': textsIn }" @animationend="onTextShown">
+  <main class="page home" :class="{ 'texts-in': textsIn }">
     <video
       class="home-video"
       :src="video"
@@ -59,6 +59,22 @@ const POP_DELAY_MS = 0 // espera extra tras terminar el zoom
 // Videos emergentes: uno a la vez, cada POPUP_MIN_MS–POPUP_MAX_MS al azar
 const POPUPS = [popup1, popup2]
 const POPUP_RATIO = 470 / 640 // alto / ancho de los videos
+
+// Copia en memoria (blob:) de cada video emergente, se descarga una sola vez por
+// visita. Reproducirlos desde memoria evita que el video visible quede esperando
+// a otro elemento que tiene el mismo archivo abierto en la caché del navegador
+// (lo que pasaba al refrescar la página)
+const popupBlobs = {}
+const loadPopupBlobs = () => {
+  POPUPS.forEach((src) => {
+    if (popupBlobs[src]) return
+    popupBlobs[src] = 'loading'
+    fetch(src)
+      .then((res) => (res.ok ? res.blob() : Promise.reject(res.status)))
+      .then((blob) => { popupBlobs[src] = URL.createObjectURL(blob) })
+      .catch(() => { delete popupBlobs[src] })
+  })
+}
 const POPUP_AFTER_TEXTS_MS = 250 // el primero sale esto después del último texto
 const POPUP_MIN_MS = 500
 const POPUP_MAX_MS = 2000
@@ -100,16 +116,10 @@ export default {
     }
   },
   mounted() {
-    // Precarga los videos emergentes (son livianos) para que el primero
-    // aparezca al instante, sin esperar la descarga
+    // Precarga los videos emergentes en memoria (son livianos) para que el
+    // primero aparezca al instante
     if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      this.preloaded = POPUPS.map((src) => {
-        const el = document.createElement('video')
-        el.muted = true
-        el.preload = 'auto'
-        el.src = src
-        return el
-      })
+      loadPopupBlobs()
     }
 
     // Ejecuta fn cuando la señal inyectada (key) sea true; si ya lo es (p. ej. al
@@ -125,7 +135,10 @@ export default {
     // Textos: cuando termina el zoom de entrada. Los videos emergentes empiezan
     // después, cuando ya apareció el último texto
     when('homeReady', () => {
-      this.timer = setTimeout(() => { this.textsIn = true }, POP_DELAY_MS)
+      this.timer = setTimeout(() => {
+        this.textsIn = true
+        this.$nextTick(() => this.afterTextsShown(() => this.startPopups()))
+      }, POP_DELAY_MS)
     })
   },
   beforeUnmount() {
@@ -135,12 +148,19 @@ export default {
     document.removeEventListener('visibilitychange', this.onVisibility)
   },
   methods: {
-    // Cada texto avisa al aparecer (fin de su animación); cuando ya aparecieron
-    // todos, arranca el ciclo de videos emergentes
-    onTextShown(event) {
-      if (event.animationName !== 'home-pop') return
-      this.textsShown = (this.textsShown || 0) + 1
-      if (this.textsShown === this.texts.length) this.startPopups()
+    // Ejecuta fn cuando ya aparecieron todos los textos. Usa la promesa
+    // `finished` de cada animación: los eventos animationend no siempre se
+    // disparan con animaciones de duración 0 (pasaba en la primera carga)
+    afterTextsShown(fn) {
+      const animations = this.$el.getAnimations
+        ? this.$el.getAnimations({ subtree: true }).filter((a) => a.animationName === 'home-pop')
+        : []
+      if (!animations.length) {
+        // Sin animaciones (navegador viejo o "reducir movimiento"): por tiempo
+        this.timer = setTimeout(fn, (this.texts.length - 1) * POP_STAGGER_MS)
+        return
+      }
+      Promise.all(animations.map((a) => a.finished)).then(fn, fn)
     },
     // Arranca el ciclo de videos emergentes (salvo con "reducir movimiento")
     startPopups() {
@@ -172,7 +192,9 @@ export default {
       const src = choices[Math.floor(Math.random() * choices.length)]
       this.lastPopup = src
       const id = ++this.popupCount
-      this.popup = { id, src, ...spot }
+      // Usa la copia en memoria si ya está lista; si no, el archivo normal
+      const blob = popupBlobs[src]
+      this.popup = { id, src: blob && blob !== 'loading' ? blob : src, ...spot }
       clearTimeout(this.popupWatchdog)
       this.popupWatchdog = setTimeout(() => this.hidePopup(id), POPUP_MAX_LIFE_MS)
       this.$nextTick(() => {

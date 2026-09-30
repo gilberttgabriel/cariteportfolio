@@ -5,14 +5,21 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <title><%= htmlWebpackPlugin.options.title %></title>
-    <!-- Primer cuadro del welcome: se pide de inmediato y se muestra mientras
-         carga el JavaScript, así no hay pantalla vacía antes del video -->
+    <!-- Primer cuadro del welcome: se pide de inmediato -->
     <link rel="preload" href="<%= BASE_URL %>welcome-poster.jpg" as="image">
     <style>
       body { margin: 0; background: #000000; }
-      #app:empty {
-        height: 100vh;
-        background: #000000 url('<%= BASE_URL %>welcome-poster.jpg') center / cover no-repeat;
+      /* Video del welcome: va en el HTML (no en Vue) para que empiece a cargar
+         apenas se lee la página, sin esperar al JavaScript. App.vue lo
+         sincroniza con el contador y lo quita al terminar */
+      #welcome-video {
+        position: fixed;
+        inset: 0;
+        z-index: 9;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        background: #000000;
       }
     </style>
   </head>
@@ -20,6 +27,16 @@
     <noscript>
       <strong>Activa JavaScript para ver esta página.</strong>
     </noscript>
+    <video
+      id="welcome-video"
+      src="<%= BASE_URL %>welcome.mp4"
+      poster="<%= BASE_URL %>welcome-poster.jpg"
+      autoplay
+      muted
+      playsinline
+      preload="auto"
+      aria-hidden="true"
+    ></video>
     <div id="app"></div>
     <!-- built files will be auto injected -->
   </body>
