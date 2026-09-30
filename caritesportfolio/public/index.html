@@ -5,6 +5,16 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <title><%= htmlWebpackPlugin.options.title %></title>
+    <!-- Primer cuadro del welcome: se pide de inmediato y se muestra mientras
+         carga el JavaScript, así no hay pantalla vacía antes del video -->
+    <link rel="preload" href="<%= BASE_URL %>welcome-poster.jpg" as="image">
+    <style>
+      body { margin: 0; background: #000000; }
+      #app:empty {
+        height: 100vh;
+        background: #000000 url('<%= BASE_URL %>welcome-poster.jpg') center / cover no-repeat;
+      }
+    </style>
   </head>
   <body>
     <noscript>

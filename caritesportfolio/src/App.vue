@@ -2,7 +2,7 @@
   <div
     class="home-screen"
     :class="{ 'is-visible': ready, 'intro-done': introDone }"
-    @transitionend.self="introDone = ready"
+    @transitionend.self="finishIntro"
   >
     <header class="site-header">
       <RouterLink to="/">
@@ -21,6 +21,7 @@
       <video
         class="welcome-video"
         :src="welcomeVideo"
+        poster="/welcome-poster.jpg"
         autoplay
         muted
         playsinline
@@ -36,11 +37,16 @@
 import { computed } from 'vue'
 import welcomeVideo from './assets/welcome.mp4'
 
+// Duración del zoom de entrada del inicio (debe coincidir con .home-screen)
+const INTRO_ZOOM_MS = 1600
+
 export default {
   name: 'App',
   provide() {
-    // Avisa a las páginas cuándo termina el welcome (el inicio lo usa para mostrar sus textos)
-    return { welcomeDone: computed(() => this.ready) }
+    return {
+      // El inicio terminó su zoom de entrada y ya se ve nítido
+      homeReady: computed(() => this.introDone)
+    }
   },
   data() {
     return {
@@ -62,9 +68,22 @@ export default {
         requestAnimationFrame(tick)
       } else {
         this.ready = true
+        // Respaldo por si no llega el evento de fin del zoom (p. ej. con
+        // "reducir movimiento" no hay transición)
+        this.introTimer = setTimeout(this.finishIntro, INTRO_ZOOM_MS + 100)
       }
     }
     requestAnimationFrame(tick)
+  },
+  beforeUnmount() {
+    clearTimeout(this.introTimer)
+  },
+  methods: {
+    finishIntro() {
+      if (!this.ready) return
+      clearTimeout(this.introTimer)
+      this.introDone = true
+    }
   }
 }
 </script>
@@ -85,7 +104,7 @@ body {
   /* En celulares, dvh descuenta las barras del navegador */
   height: 100dvh;
   overflow: hidden;
-  background: #182b3c;
+  background: #000000;
 }
 
 /* Inicio: se pinta desde el principio debajo del welcome (ya acercado),
@@ -142,7 +161,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 16px;
-  background: #182b3c;
+  background: #000000;
   will-change: opacity;
 }
 

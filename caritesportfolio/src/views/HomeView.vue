@@ -1,5 +1,5 @@
 <template>
-  <main class="page home" :class="{ 'texts-in': textsIn }">
+  <main class="page home" :class="{ 'texts-in': textsIn }" @animationend="onTextShown">
     <video
       class="home-video"
       :src="video"
@@ -11,8 +11,9 @@
       aria-hidden="true"
     ></video>
 
-    <!-- Video emergente: aparece de a uno, en un lugar y momento al azar.
-         Va debajo de los textos y no recibe clics -->
+    <!-- Video emergente: aparece de a uno, en cualquier lugar y momento al azar.
+         Va debajo de los textos (z-index) y no recibe clics, así los enlaces
+         siguen funcionando aunque pase por detrás -->
     <video
       v-if="popup"
       :key="popup.id"
@@ -49,17 +50,19 @@ import video from '../assets/fondohome.mp4'
 import popup1 from '../assets/popup1.mp4'
 import popup2 from '../assets/popup2.mp4'
 
-// Los textos aparecen de golpe, de izquierda a derecha, uno cada POP_STAGGER_MS
-const POP_STAGGER_MS = 120
-const POP_DELAY_MS = 300 // espera tras terminar el welcome
+// Los textos aparecen de golpe, de izquierda a derecha, uno cada POP_STAGGER_MS.
+// Empiezan cuando termina el zoom de entrada: durante el zoom el navegador
+// dibuja la página como imagen escalada y las letras se verían borrosas
+const POP_STAGGER_MS = 250
+const POP_DELAY_MS = 0 // espera extra tras terminar el zoom
 
 // Videos emergentes: uno a la vez, cada POPUP_MIN_MS–POPUP_MAX_MS al azar
 const POPUPS = [popup1, popup2]
 const POPUP_RATIO = 470 / 640 // alto / ancho de los videos
-const POPUP_FIRST_MS = 200 // espera tras aparecer los textos
+const POPUP_AFTER_TEXTS_MS = 250 // el primero sale esto después del último texto
 const POPUP_MIN_MS = 500
 const POPUP_MAX_MS = 2000
-const POPUP_MARGIN = 16 // distancia mínima a los bordes y a los textos, en px
+const POPUP_MARGIN = 16 // distancia mínima a los bordes, en px
 // Tiempo máximo en pantalla: si el video se traba y nunca termina, se quita igual
 const POPUP_MAX_LIFE_MS = 6000
 // Tras estos rechazos seguidos de reproducción por política del navegador
@@ -70,7 +73,7 @@ const random = (min, max) => min + Math.random() * (max - min)
 
 export default {
   name: 'HomeView',
-  inject: { welcomeDone: { default: null } },
+  inject: { homeReady: { default: null } },
   data() {
     return {
       video,
@@ -109,22 +112,21 @@ export default {
       })
     }
 
-    const show = () => {
-      this.timer = setTimeout(() => {
-        this.textsIn = true
-        this.startPopups()
-      }, POP_DELAY_MS)
-    }
-    // En la primera carga espera a que termine el welcome; al volver al inicio, aparecen enseguida
-    if (this.welcomeDone === false) {
-      const stop = this.$watch(() => this.welcomeDone, (done) => {
+    // Ejecuta fn cuando la señal inyectada (key) sea true; si ya lo es (p. ej. al
+    // volver al inicio desde otra página), enseguida
+    const when = (key, fn) => {
+      if (this[key] !== false) return fn()
+      const stop = this.$watch(() => this[key], (done) => {
         if (!done) return
         stop()
-        show()
+        fn()
       })
-    } else {
-      show()
     }
+    // Textos: cuando termina el zoom de entrada. Los videos emergentes empiezan
+    // después, cuando ya apareció el último texto
+    when('homeReady', () => {
+      this.timer = setTimeout(() => { this.textsIn = true }, POP_DELAY_MS)
+    })
   },
   beforeUnmount() {
     clearTimeout(this.timer)
@@ -133,6 +135,13 @@ export default {
     document.removeEventListener('visibilitychange', this.onVisibility)
   },
   methods: {
+    // Cada texto avisa al aparecer (fin de su animación); cuando ya aparecieron
+    // todos, arranca el ciclo de videos emergentes
+    onTextShown(event) {
+      if (event.animationName !== 'home-pop') return
+      this.textsShown = (this.textsShown || 0) + 1
+      if (this.textsShown === this.texts.length) this.startPopups()
+    },
     // Arranca el ciclo de videos emergentes (salvo con "reducir movimiento")
     startPopups() {
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
@@ -149,7 +158,7 @@ export default {
         }
       }
       document.addEventListener('visibilitychange', this.onVisibility)
-      this.schedulePopup(POPUP_FIRST_MS)
+      this.schedulePopup(POPUP_AFTER_TEXTS_MS)
     },
     schedulePopup(ms) {
       clearTimeout(this.popupTimer)
@@ -158,11 +167,6 @@ export default {
     showPopup() {
       if (document.hidden) return
       const spot = this.findSpot()
-      if (!spot) {
-        // No hay lugar libre en esta pantalla: se intenta más tarde
-        this.schedulePopup(random(POPUP_MIN_MS, POPUP_MAX_MS))
-        return
-      }
       // Alterna al azar, sin repetir el mismo video dos veces seguidas
       const choices = POPUPS.filter((src) => src !== this.lastPopup)
       const src = choices[Math.floor(Math.random() * choices.length)]
@@ -201,37 +205,19 @@ export default {
       this.popup = null
       this.schedulePopup(random(POPUP_MIN_MS, POPUP_MAX_MS))
     },
-    // Busca un lugar al azar donde el video no tape los textos ni el ícono
+    // Lugar al azar en cualquier parte de la pantalla. El video queda debajo de
+    // los textos y no recibe clics, así que puede pasar por detrás de ellos
     findSpot() {
-      // Medidas en px de la página sin transformar: si el zoom de entrada del
-      // inicio sigue activo, getBoundingClientRect viene escalado y se corrige
-      const rect = this.$el.getBoundingClientRect()
-      const scale = rect.width / this.$el.offsetWidth || 1
       const page = { width: this.$el.offsetWidth, height: this.$el.offsetHeight }
       const mobile = page.width <= 700
       const w = page.width * (mobile ? random(0.45, 0.55) : random(0.25, 0.3))
       const h = w * POPUP_RATIO
       const m = POPUP_MARGIN
-      // Zonas ocupadas, relativas a la página
-      const blocked = [...this.$el.querySelectorAll('.home-text'), document.querySelector('.site-icon')]
-        .filter(Boolean)
-        .map((el) => {
-          const r = el.getBoundingClientRect()
-          return {
-            left: (r.left - rect.left) / scale,
-            top: (r.top - rect.top) / scale,
-            right: (r.right - rect.left) / scale,
-            bottom: (r.bottom - rect.top) / scale
-          }
-        })
-      for (let attempt = 0; attempt < 40; attempt++) {
-        const x = random(m, page.width - w - m)
-        const y = random(m, page.height - h - m)
-        const free = blocked.every((b) =>
-          x + w + m <= b.left || x - m >= b.right || y + h + m <= b.top || y - m >= b.bottom)
-        if (free) return { x, y, w }
+      return {
+        x: random(m, Math.max(m, page.width - w - m)),
+        y: random(m, Math.max(m, page.height - h - m)),
+        w
       }
-      return null
     },
     textStyle(text) {
       return {
@@ -259,9 +245,11 @@ export default {
   pointer-events: none;
 }
 
-/* Video emergente: aparece y desaparece de golpe, como los textos */
+/* Video emergente: aparece y desaparece de golpe, como los textos.
+   z-index 0 lo deja sobre el video de fondo y debajo de los textos (z-index 1) */
 .home-popup {
   position: absolute;
+  z-index: 0;
   display: block;
   height: auto;
   pointer-events: none;
