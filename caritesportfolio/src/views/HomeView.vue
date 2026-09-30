@@ -20,12 +20,11 @@
       class="home-popup"
       :src="popup.src"
       :style="{ left: popup.x + 'px', top: popup.y + 'px', width: popup.w + 'px' }"
-      autoplay
       muted
       playsinline
       aria-hidden="true"
-      @ended="hidePopup"
-      @error="hidePopup"
+      @ended="hidePopup(popup.id)"
+      @error="hidePopup(popup.id)"
     ></video>
 
     <!-- Textos sobre el video. x, y: centro de cada texto, en % de la pantalla -->
@@ -57,10 +56,15 @@ const POP_DELAY_MS = 300 // espera tras terminar el welcome
 // Videos emergentes: uno a la vez, cada POPUP_MIN_MS–POPUP_MAX_MS al azar
 const POPUPS = [popup1, popup2]
 const POPUP_RATIO = 470 / 640 // alto / ancho de los videos
-const POPUP_FIRST_MS = 1200 // espera tras aparecer los textos
-const POPUP_MIN_MS = 1500
-const POPUP_MAX_MS = 4500
+const POPUP_FIRST_MS = 200 // espera tras aparecer los textos
+const POPUP_MIN_MS = 500
+const POPUP_MAX_MS = 2000
 const POPUP_MARGIN = 16 // distancia mínima a los bordes y a los textos, en px
+// Tiempo máximo en pantalla: si el video se traba y nunca termina, se quita igual
+const POPUP_MAX_LIFE_MS = 6000
+// Tras estos rechazos seguidos de reproducción por política del navegador
+// (p. ej. iPhone en ahorro de batería), el ciclo se detiene
+const POPUP_MAX_BLOCKED = 3
 
 const random = (min, max) => min + Math.random() * (max - min)
 
@@ -93,6 +97,18 @@ export default {
     }
   },
   mounted() {
+    // Precarga los videos emergentes (son livianos) para que el primero
+    // aparezca al instante, sin esperar la descarga
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      this.preloaded = POPUPS.map((src) => {
+        const el = document.createElement('video')
+        el.muted = true
+        el.preload = 'auto'
+        el.src = src
+        return el
+      })
+    }
+
     const show = () => {
       this.timer = setTimeout(() => {
         this.textsIn = true
@@ -113,6 +129,7 @@ export default {
   beforeUnmount() {
     clearTimeout(this.timer)
     clearTimeout(this.popupTimer)
+    clearTimeout(this.popupWatchdog)
     document.removeEventListener('visibilitychange', this.onVisibility)
   },
   methods: {
@@ -120,10 +137,12 @@ export default {
     startPopups() {
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
       this.popupCount = 0
+      this.popupBlocked = 0
       this.onVisibility = () => {
         // Con la pestaña oculta se detiene el ciclo, para no gastar batería
         if (document.hidden) {
           clearTimeout(this.popupTimer)
+          clearTimeout(this.popupWatchdog)
           this.popup = null
         } else {
           this.schedulePopup(random(POPUP_MIN_MS, POPUP_MAX_MS))
@@ -148,20 +167,37 @@ export default {
       const choices = POPUPS.filter((src) => src !== this.lastPopup)
       const src = choices[Math.floor(Math.random() * choices.length)]
       this.lastPopup = src
-      this.popup = { id: ++this.popupCount, src, ...spot }
+      const id = ++this.popupCount
+      this.popup = { id, src, ...spot }
+      clearTimeout(this.popupWatchdog)
+      this.popupWatchdog = setTimeout(() => this.hidePopup(id), POPUP_MAX_LIFE_MS)
       this.$nextTick(() => {
         const el = this.$refs.popup
-        // Si el navegador bloquea la reproducción (p. ej. iPhone en ahorro de
-        // batería), no se muestra y se detiene el ciclo
-        if (el && el.play) {
-          el.play().catch(() => {
-            this.popup = null
-            clearTimeout(this.popupTimer)
-          })
-        }
+        if (!el || !el.play) return
+        // Vue solo pone muted como propiedad; iOS también exige el atributo
+        // para dejar reproducir sin interacción
+        el.muted = true
+        el.setAttribute('muted', '')
+        el.play().then(
+          () => { this.popupBlocked = 0 },
+          (err) => {
+            // Un rechazo por política (NotAllowedError) puede ser permanente:
+            // tras varios seguidos se deja de intentar. Cualquier otro error
+            // (carga interrumpida, etc.) solo salta al siguiente video
+            if (err && err.name === 'NotAllowedError' && ++this.popupBlocked >= POPUP_MAX_BLOCKED) {
+              clearTimeout(this.popupWatchdog)
+              this.popup = null
+              return
+            }
+            this.hidePopup(id)
+          }
+        )
       })
     },
-    hidePopup() {
+    // Quita el video (si sigue siendo el mismo) y programa el siguiente
+    hidePopup(id) {
+      if (!this.popup || this.popup.id !== id) return
+      clearTimeout(this.popupWatchdog)
       this.popup = null
       this.schedulePopup(random(POPUP_MIN_MS, POPUP_MAX_MS))
     },
