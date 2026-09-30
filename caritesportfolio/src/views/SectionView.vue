@@ -1,5 +1,9 @@
 <template>
-  <div class="page section" :style="{ backgroundImage: `url(${bg})` }">
+  <div
+    class="page section"
+    :class="{ 'section-plain': !bg }"
+    :style="bg && { backgroundImage: `url(${bg})` }"
+  >
     <div class="grid">
       <figure v-for="n in PHOTO_COUNT" :key="n" class="cell">
         <span class="cell-number">{{ String(n).padStart(2, '0') }}.</span>
@@ -13,7 +17,8 @@
 export default {
   name: 'SectionView',
   props: {
-    bg: { type: String, required: true },
+    // Sin fondo, la página queda en blanco hueso
+    bg: { type: String, default: null },
     img: { type: String, required: true }
   },
   data() {
@@ -25,6 +30,16 @@ export default {
 </script>
 
 <style>
+.section {
+  background-color: #f4f1ea;
+}
+
+/* Sin foto de fondo, los números van en negro para que se lean */
+.section-plain .cell-number {
+  color: #1a1a1a;
+  text-shadow: none;
+}
+
 /* Cuadrícula de 4 × 2 centrada en la pantalla. --cell es el ancho de cada
    celda: se limita por el alto de la pantalla para que no choque con el header */
 .grid {

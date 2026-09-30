@@ -18,7 +18,15 @@
 
   <Transition name="welcome">
     <div v-if="!ready" class="welcome">
-      <img class="welcome-gif" src="/esquinaizquierda.gif" alt="">
+      <video
+        class="welcome-video"
+        :src="welcomeVideo"
+        autoplay
+        muted
+        playsinline
+        preload="auto"
+        aria-hidden="true"
+      ></video>
       <p class="welcome-count">{{ progress }}%</p>
     </div>
   </Transition>
@@ -26,23 +34,26 @@
 
 <script>
 import { computed } from 'vue'
+import welcomeVideo from './assets/welcome.mp4'
 
 export default {
   name: 'App',
   provide() {
-    // Avisa a las páginas cuándo termina el welcome (el inicio lo usa para su intro)
+    // Avisa a las páginas cuándo termina el welcome (el inicio lo usa para mostrar sus textos)
     return { welcomeDone: computed(() => this.ready) }
   },
   data() {
     return {
       ready: false,
       introDone: false,
-      progress: 1
+      progress: 1,
+      welcomeVideo
     }
   },
   mounted() {
-    // Welcome: cuenta de 1 a 100% en WELCOME_MS y luego muestra el inicio
-    const WELCOME_MS = 2000
+    // Welcome: cuenta de 1 a 100% en WELCOME_MS y luego muestra el inicio.
+    // Dura lo mismo que welcome.mp4, para que el video se vea completo
+    const WELCOME_MS = 2700
     const start = performance.now()
     const tick = (now) => {
       const t = Math.min((now - start) / WELCOME_MS, 1)
@@ -135,13 +146,24 @@ body {
   will-change: opacity;
 }
 
-.welcome-gif {
-  width: min(600px, 80vw);
+/* Video a pantalla completa, sin deformarse */
+.welcome-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   display: block;
 }
 
+/* Contador encima del video, abajo al centro */
 .welcome-count {
+  position: absolute;
+  left: 50%;
+  bottom: calc(32px + env(safe-area-inset-bottom, 0px));
+  translate: -50% 0;
   margin: 0;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
   color: #ecebe0;
   font-size: 1.25rem;
   letter-spacing: 0.2em;
