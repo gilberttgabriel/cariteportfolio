@@ -1,6 +1,5 @@
 import fondo3 from './assets/fondo3.webp'
 import fondo4 from './assets/fondo4.webp'
-import directTrazo from './assets/direct-trazo.png'
 
 // Páginas internas. El router crea una ruta por cada una.
 // bg: fondo de la página (opcional). img: foto de su galería.
@@ -12,12 +11,10 @@ export default [
   {
     name: 'direct',
     to: '/direct',
-    // Trazo del diagrama (sin el papel) sobre blanco perla
-    bg: directTrazo,
-    bgColor: '#f0ece2',
-    bgSize: 'contain',
+    // Blanco puro, como la galería de referencia
+    bgColor: '#ffffff',
     light: true,
-    // Vista de proyectos (tiras de fotos)
+    // Galería de proyectos con notas a mano
     projects: true,
     img: '/directimg.jpg'
   },
