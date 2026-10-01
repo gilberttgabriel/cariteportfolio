@@ -20,23 +20,23 @@
     <!-- El video del welcome está en public/index.html (#welcome-video), debajo
          de esta capa, para que cargue antes que el JavaScript -->
     <div v-if="!ready" class="welcome">
-      <p class="welcome-count">{{ progress }}%</p>
+      <!-- Hay que llegar a 10 puntos en el snake para entrar -->
+      <WelcomeSnake @win="enter" />
     </div>
   </Transition>
 </template>
 
 <script>
 import { computed } from 'vue'
+import WelcomeSnake from './components/WelcomeSnake.vue'
 
 // Duración del zoom de entrada del inicio (debe coincidir con .home-screen)
 const INTRO_ZOOM_MS = 1600
-// Welcome
-const WELCOME_MS = 2700 // duración si el video no se puede reproducir
-const VIDEO_WAIT_MS = 2000 // cuánto esperar a que arranque el video
 const WELCOME_FADE_MS = 1100 // debe coincidir con .welcome-leave-active
 
 export default {
   name: 'App',
+  components: { WelcomeSnake },
   provide() {
     return {
       // El inicio terminó su zoom de entrada y ya se ve nítido
@@ -46,47 +46,21 @@ export default {
   data() {
     return {
       ready: false,
-      introDone: false,
-      progress: 1
+      introDone: false
     }
-  },
-  mounted() {
-    // Welcome: el contador sigue la reproducción del video (#welcome-video), así
-    // ambos avanzan juntos aunque el video tarde en cargar. Si el video no
-    // arranca en VIDEO_WAIT_MS (p. ej. el navegador lo bloquea), el contador
-    // sigue solo en WELCOME_MS
-    const video = document.getElementById('welcome-video')
-    const start = performance.now()
-    let timerStart = null
-    const tick = (now) => {
-      let t
-      const playing = video && video.duration && (video.currentTime > 0 || video.ended)
-      if (timerStart === null && playing) {
-        t = video.ended ? 1 : video.currentTime / video.duration
-      } else if (timerStart !== null || !video || now - start > VIDEO_WAIT_MS) {
-        if (timerStart === null) timerStart = now
-        t = (now - timerStart) / WELCOME_MS
-      } else {
-        t = 0
-      }
-      t = Math.min(t, 1)
-      this.progress = Math.max(1, Math.round(t * 100))
-      if (t < 1) {
-        requestAnimationFrame(tick)
-      } else {
-        this.ready = true
-        this.hideWelcomeVideo(video)
-        // Respaldo por si no llega el evento de fin del zoom (p. ej. con
-        // "reducir movimiento" no hay transición)
-        this.introTimer = setTimeout(this.finishIntro, INTRO_ZOOM_MS + 100)
-      }
-    }
-    requestAnimationFrame(tick)
   },
   beforeUnmount() {
     clearTimeout(this.introTimer)
   },
   methods: {
+    // Ganó el snake: se quita el welcome (con su video) y empieza el zoom de entrada
+    enter() {
+      this.ready = true
+      this.hideWelcomeVideo(document.getElementById('welcome-video'))
+      // Respaldo por si no llega el evento de fin del zoom (p. ej. con
+      // "reducir movimiento" no hay transición)
+      this.introTimer = setTimeout(this.finishIntro, INTRO_ZOOM_MS + 100)
+    },
     // Desvanece el video del welcome junto con su capa y luego lo quita
     hideWelcomeVideo(video) {
       if (!video) return
@@ -179,20 +153,6 @@ body {
   /* Transparente: debajo se ve el video del welcome (#welcome-video) */
   background: transparent;
   will-change: opacity;
-}
-
-/* Contador encima del video, abajo al centro */
-.welcome-count {
-  position: absolute;
-  left: 50%;
-  bottom: calc(32px + env(safe-area-inset-bottom, 0px));
-  translate: -50% 0;
-  margin: 0;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
-  color: #ecebe0;
-  font-size: 1.25rem;
-  letter-spacing: 0.2em;
-  font-variant-numeric: tabular-nums;
 }
 
 .welcome-leave-active {

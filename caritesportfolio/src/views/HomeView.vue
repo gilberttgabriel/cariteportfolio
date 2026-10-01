@@ -75,9 +75,9 @@ const loadPopupBlobs = () => {
       .catch(() => { delete popupBlobs[src] })
   })
 }
-const POPUP_AFTER_TEXTS_MS = 250 // el primero sale esto después del último texto
-const POPUP_MIN_MS = 500
-const POPUP_MAX_MS = 2000
+const POPUP_AFTER_TEXTS_MS = 3500 // el primero sale esto después del último texto
+const POPUP_MIN_MS = 2000
+const POPUP_MAX_MS = 5000
 const POPUP_MARGIN = 16 // distancia mínima a los bordes, en px
 // Tiempo máximo en pantalla: si el video se traba y nunca termina, se quita igual
 const POPUP_MAX_LIFE_MS = 6000

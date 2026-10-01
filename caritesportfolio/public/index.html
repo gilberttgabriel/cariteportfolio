@@ -7,11 +7,14 @@
     <title><%= htmlWebpackPlugin.options.title %></title>
     <!-- Primer cuadro del welcome: se pide de inmediato -->
     <link rel="preload" href="<%= BASE_URL %>welcome-poster.jpg" as="image">
+    <!-- Letra pixelada del snake del welcome -->
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
     <style>
       body { margin: 0; background: #000000; }
       /* Video del welcome: va en el HTML (no en Vue) para que empiece a cargar
          apenas se lee la página, sin esperar al JavaScript. App.vue lo
-         sincroniza con el contador y lo quita al terminar */
+         lo quita al ganar el snake del welcome */
       #welcome-video {
         position: fixed;
         inset: 0;
@@ -33,6 +36,7 @@
       poster="<%= BASE_URL %>welcome-poster.jpg"
       autoplay
       muted
+      loop
       playsinline
       preload="auto"
       aria-hidden="true"
