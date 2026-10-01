@@ -2,9 +2,16 @@
   <!-- Galería de direct: cuadrícula de 2 columnas de celdas cuadradas, cada foto
        entera dentro de su celda sobre blanco (como maxmontgomeryphoto.com).
        En los blancos alrededor de cada foto hay notas a mano -->
-  <div class="direct">
+  <div ref="scroller" class="direct" @scroll.passive="onScroll">
     <div class="direct-grid">
-      <figure v-for="(photo, i) in photos" :key="photo.src" class="direct-cell">
+      <figure
+        v-for="(photo, i) in photos"
+        :key="photo.src"
+        ref="cells"
+        :data-i="i"
+        class="direct-cell"
+        :class="{ 'is-active': i === active }"
+      >
         <img class="direct-img" :src="photo.src" alt="" :loading="i < 2 ? 'eager' : 'lazy'">
 
         <template v-for="(note, n) in photo.notes" :key="n">
@@ -97,12 +104,48 @@ const PHOTOS = [
   }
 ]
 
+// En celular (sin cursor) la foto que está en el centro de la pantalla al
+// hacer scroll es la que se pone a color
+const TOUCH_QUERY = '(max-width: 700px), (hover: none)'
+
 export default {
   name: 'DirectGallery',
   data() {
-    return { photos: PHOTOS }
+    return { photos: PHOTOS, active: -1 }
+  },
+  mounted() {
+    this.touch = window.matchMedia(TOUCH_QUERY)
+    this.onResize = () => this.onScroll()
+    window.addEventListener('resize', this.onResize)
+    this.$nextTick(this.onScroll)
+  },
+  beforeUnmount() {
+    cancelAnimationFrame(this.frame)
+    window.removeEventListener('resize', this.onResize)
   },
   methods: {
+    // Busca la foto más cercana al centro de la pantalla (una vez por cuadro)
+    onScroll() {
+      cancelAnimationFrame(this.frame)
+      this.frame = requestAnimationFrame(() => {
+        if (!this.touch.matches) {
+          this.active = -1
+          return
+        }
+        const middle = window.innerHeight / 2
+        let best = -1
+        let bestDist = Infinity
+        ;(this.$refs.cells || []).forEach((cell) => {
+          const box = cell.getBoundingClientRect()
+          const dist = Math.abs(box.top + box.height / 2 - middle)
+          if (dist < bestDist) {
+            bestDist = dist
+            best = Number(cell.dataset.i)
+          }
+        })
+        this.active = best
+      })
+    },
     markStyle(note) {
       const style = {
         left: note.x + '%',
@@ -154,7 +197,8 @@ export default {
   filter: grayscale(1) contrast(1.18) brightness(0.97);
 }
 
-.direct-img:hover {
+.direct-img:hover,
+.direct-cell.is-active .direct-img {
   filter: none;
 }
 
