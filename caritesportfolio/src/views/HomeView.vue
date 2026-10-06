@@ -1,44 +1,38 @@
 <template>
   <main class="page home" :class="{ 'texts-in': textsIn }">
-    <video
-      class="home-video"
-      :src="video"
-      autoplay
-      muted
-      loop
-      playsinline
-      preload="auto"
-      aria-hidden="true"
-    ></video>
+    <!-- Franja superior: el video de fondo -->
+    <div class="home-hero">
+      <video
+        class="home-video"
+        :src="video"
+        autoplay
+        muted
+        loop
+        playsinline
+        preload="auto"
+        aria-hidden="true"
+      ></video>
+    </div>
 
-    <!-- Video emergente: aparece de a uno, en cualquier lugar y momento al azar.
-         Va debajo de los textos (z-index) y no recibe clics, así los enlaces
-         siguen funcionando aunque pase por detrás -->
-    <video
-      v-if="popup"
-      :key="popup.id"
-      ref="popup"
-      class="home-popup"
-      :src="popup.src"
-      :style="{ left: popup.x + 'px', top: popup.y + 'px', width: popup.w + 'px' }"
-      muted
-      playsinline
-      aria-hidden="true"
-      @ended="hidePopup(popup.id)"
-      @error="hidePopup(popup.id)"
-    ></video>
+    <!-- Puntos rojos -->
+    <span class="home-dot" style="left: 3.6%; top: 59%"></span>
+    <span class="home-dot" style="left: 96.4%; top: 94%"></span>
 
-    <!-- Textos sobre el video. x, y: centro de cada texto, en % de la pantalla -->
+    <!-- Textos. x: borde izquierdo (o centro si center), y: centro; en % de la
+         pantalla. mx: x en celular, para que no se salgan por la derecha.
+         kind: phrase (sobre el video), credit, link o small -->
     <template v-for="text in texts" :key="text.label">
       <RouterLink
         v-if="text.to"
         :to="text.to"
         class="home-text home-link"
+        :class="textClass(text)"
         :style="textStyle(text)"
       ><span class="home-pop">{{ text.label }}</span></RouterLink>
       <span
         v-else
         class="home-text"
+        :class="textClass(text)"
         :style="textStyle(text)"
       ><span class="home-pop">{{ text.label }}</span></span>
     </template>
@@ -47,45 +41,12 @@
 
 <script>
 import video from '../assets/fondohome.mp4'
-import popup1 from '../assets/popup1.mp4'
-import popup2 from '../assets/popup2.mp4'
 
 // Los textos aparecen de golpe, de izquierda a derecha, uno cada POP_STAGGER_MS.
 // Empiezan cuando termina el zoom de entrada: durante el zoom el navegador
 // dibuja la página como imagen escalada y las letras se verían borrosas
-const POP_STAGGER_MS = 250
+const POP_STAGGER_MS = 80
 const POP_DELAY_MS = 0 // espera extra tras terminar el zoom
-
-// Videos emergentes: uno a la vez, cada POPUP_MIN_MS–POPUP_MAX_MS al azar
-const POPUPS = [popup1, popup2]
-const POPUP_RATIO = 470 / 640 // alto / ancho de los videos
-
-// Copia en memoria (blob:) de cada video emergente, se descarga una sola vez por
-// visita. Reproducirlos desde memoria evita que el video visible quede esperando
-// a otro elemento que tiene el mismo archivo abierto en la caché del navegador
-// (lo que pasaba al refrescar la página)
-const popupBlobs = {}
-const loadPopupBlobs = () => {
-  POPUPS.forEach((src) => {
-    if (popupBlobs[src]) return
-    popupBlobs[src] = 'loading'
-    fetch(src)
-      .then((res) => (res.ok ? res.blob() : Promise.reject(res.status)))
-      .then((blob) => { popupBlobs[src] = URL.createObjectURL(blob) })
-      .catch(() => { delete popupBlobs[src] })
-  })
-}
-const POPUP_AFTER_TEXTS_MS = 3500 // el primero sale esto después del último texto
-const POPUP_MIN_MS = 2000
-const POPUP_MAX_MS = 5000
-const POPUP_MARGIN = 16 // distancia mínima a los bordes, en px
-// Tiempo máximo en pantalla: si el video se traba y nunca termina, se quita igual
-const POPUP_MAX_LIFE_MS = 6000
-// Tras estos rechazos seguidos de reproducción por política del navegador
-// (p. ej. iPhone en ahorro de batería), el ciclo se detiene
-const POPUP_MAX_BLOCKED = 3
-
-const random = (min, max) => min + Math.random() * (max - min)
 
 export default {
   name: 'HomeView',
@@ -94,17 +55,27 @@ export default {
     return {
       video,
       textsIn: false,
-      // Video emergente visible: { id, src, x, y, w } o null
-      popup: null,
       // Distribución tomada de la imagen de referencia
       texts: [
-        { label: 'Santiago Núñez', x: 21.3, y: 33.4 },
-        { label: '(direct)', to: '/direct', x: 52.7, y: 19.8 },
-        { label: '(redes)', to: '/redes', x: 73.7, y: 40.3 },
-        { label: '(fotos)', to: '/fotos', x: 12.5, y: 49.5 },
-        { label: '(bio)', to: '/bio', x: 50, y: 49.8 },
-        { label: '(contacto)', to: '/contacto', x: 42, y: 68.1 },
-        { label: 'espacio digital', x: 74, y: 66 }
+        // Frase sobre el video
+        { label: 'un', kind: 'phrase', x: 7.8, y: 9 },
+        { label: 'pedazo', kind: 'phrase', x: 15.8, y: 8.2 },
+        { label: 'digital', kind: 'phrase', x: 25.9, y: 15.3 },
+        { label: 'de', kind: 'phrase', x: 42, y: 14 },
+        { label: 'mi mente', kind: 'phrase', x: 45.2, y: 21.6 },
+        // Crédito, centrado bajo el video
+        { label: '©SN 2026', kind: 'credit', x: 50, y: 58, center: true },
+        // Secciones
+        { label: 'Manifiesto', kind: 'link', to: '/bio', x: 6.9, y: 62.2 },
+        { label: 'Cinematography / DoP', kind: 'link', to: '/direct', x: 26.3, y: 71.1, mx: 18 },
+        { label: 'Stills', kind: 'link', to: '/fotos', x: 66, y: 77, mx: 58 },
+        { label: 'Content', kind: 'link', to: '/redes', x: 82.9, y: 86.4, mx: 64 },
+        // Poema chico, abajo a la izquierda
+        { label: 'revisitando', kind: 'small', x: 2.8, y: 90.5 },
+        { label: 'mis memorias', kind: 'small', x: 11.3, y: 92.4 },
+        { label: 'constantemente', kind: 'small', x: 20.4, y: 90.5 },
+        { label: 'descalzo', kind: 'small', x: 2.8, y: 94.4 },
+        { label: 'por  el eterno caribe.', kind: 'small', x: 18.4, y: 94.4 }
       ]
     }
   },
@@ -116,12 +87,6 @@ export default {
     }
   },
   mounted() {
-    // Precarga los videos emergentes en memoria (son livianos) para que el
-    // primero aparezca al instante
-    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      loadPopupBlobs()
-    }
-
     // Ejecuta fn cuando la señal inyectada (key) sea true; si ya lo es (p. ej. al
     // volver al inicio desde otra página), enseguida
     const when = (key, fn) => {
@@ -132,118 +97,24 @@ export default {
         fn()
       })
     }
-    // Textos: cuando termina el zoom de entrada. Los videos emergentes empiezan
-    // después, cuando ya apareció el último texto
+    // Textos: cuando termina el zoom de entrada
     when('homeReady', () => {
       this.timer = setTimeout(() => {
         this.textsIn = true
-        this.$nextTick(() => this.afterTextsShown(() => this.startPopups()))
       }, POP_DELAY_MS)
     })
   },
   beforeUnmount() {
     clearTimeout(this.timer)
-    clearTimeout(this.popupTimer)
-    clearTimeout(this.popupWatchdog)
-    document.removeEventListener('visibilitychange', this.onVisibility)
   },
   methods: {
-    // Ejecuta fn cuando ya aparecieron todos los textos. Usa la promesa
-    // `finished` de cada animación: los eventos animationend no siempre se
-    // disparan con animaciones de duración 0 (pasaba en la primera carga)
-    afterTextsShown(fn) {
-      const animations = this.$el.getAnimations
-        ? this.$el.getAnimations({ subtree: true }).filter((a) => a.animationName === 'home-pop')
-        : []
-      if (!animations.length) {
-        // Sin animaciones (navegador viejo o "reducir movimiento"): por tiempo
-        this.timer = setTimeout(fn, (this.texts.length - 1) * POP_STAGGER_MS)
-        return
-      }
-      Promise.all(animations.map((a) => a.finished)).then(fn, fn)
-    },
-    // Arranca el ciclo de videos emergentes (salvo con "reducir movimiento")
-    startPopups() {
-      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-      this.popupCount = 0
-      this.popupBlocked = 0
-      this.onVisibility = () => {
-        // Con la pestaña oculta se detiene el ciclo, para no gastar batería
-        if (document.hidden) {
-          clearTimeout(this.popupTimer)
-          clearTimeout(this.popupWatchdog)
-          this.popup = null
-        } else {
-          this.schedulePopup(random(POPUP_MIN_MS, POPUP_MAX_MS))
-        }
-      }
-      document.addEventListener('visibilitychange', this.onVisibility)
-      this.schedulePopup(POPUP_AFTER_TEXTS_MS)
-    },
-    schedulePopup(ms) {
-      clearTimeout(this.popupTimer)
-      this.popupTimer = setTimeout(() => this.showPopup(), ms)
-    },
-    showPopup() {
-      if (document.hidden) return
-      const spot = this.findSpot()
-      // Alterna al azar, sin repetir el mismo video dos veces seguidas
-      const choices = POPUPS.filter((src) => src !== this.lastPopup)
-      const src = choices[Math.floor(Math.random() * choices.length)]
-      this.lastPopup = src
-      const id = ++this.popupCount
-      // Usa la copia en memoria si ya está lista; si no, el archivo normal
-      const blob = popupBlobs[src]
-      this.popup = { id, src: blob && blob !== 'loading' ? blob : src, ...spot }
-      clearTimeout(this.popupWatchdog)
-      this.popupWatchdog = setTimeout(() => this.hidePopup(id), POPUP_MAX_LIFE_MS)
-      this.$nextTick(() => {
-        const el = this.$refs.popup
-        if (!el || !el.play) return
-        // Vue solo pone muted como propiedad; iOS también exige el atributo
-        // para dejar reproducir sin interacción
-        el.muted = true
-        el.setAttribute('muted', '')
-        el.play().then(
-          () => { this.popupBlocked = 0 },
-          (err) => {
-            // Un rechazo por política (NotAllowedError) puede ser permanente:
-            // tras varios seguidos se deja de intentar. Cualquier otro error
-            // (carga interrumpida, etc.) solo salta al siguiente video
-            if (err && err.name === 'NotAllowedError' && ++this.popupBlocked >= POPUP_MAX_BLOCKED) {
-              clearTimeout(this.popupWatchdog)
-              this.popup = null
-              return
-            }
-            this.hidePopup(id)
-          }
-        )
-      })
-    },
-    // Quita el video (si sigue siendo el mismo) y programa el siguiente
-    hidePopup(id) {
-      if (!this.popup || this.popup.id !== id) return
-      clearTimeout(this.popupWatchdog)
-      this.popup = null
-      this.schedulePopup(random(POPUP_MIN_MS, POPUP_MAX_MS))
-    },
-    // Lugar al azar en cualquier parte de la pantalla. El video queda debajo de
-    // los textos y no recibe clics, así que puede pasar por detrás de ellos
-    findSpot() {
-      const page = { width: this.$el.offsetWidth, height: this.$el.offsetHeight }
-      const mobile = page.width <= 700
-      const w = page.width * (mobile ? random(0.45, 0.55) : random(0.25, 0.3))
-      const h = w * POPUP_RATIO
-      const m = POPUP_MARGIN
-      return {
-        x: random(m, Math.max(m, page.width - w - m)),
-        y: random(m, Math.max(m, page.height - h - m)),
-        w
-      }
+    textClass(text) {
+      return ['home-' + text.kind, { 'home-center': text.center }]
     },
     textStyle(text) {
       return {
-        left: text.x + '%',
+        '--x': text.x + '%',
+        '--mx': (text.mx ?? text.x) + '%',
         top: text.y + '%',
         '--pop-delay': this.popOrder[text.label] * POP_STAGGER_MS + 'ms'
       }
@@ -254,40 +125,86 @@ export default {
 
 <style>
 .home {
-  background-color: #1a1a1a;
+  background-color: #ffffff;
 }
 
-/* Video de fondo: cubre toda la pantalla sin deformarse */
-.home-video {
+/* Video arriba, ocupando el 55% de la pantalla */
+.home-hero {
   position: absolute;
-  inset: 0;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 55%;
+  overflow: hidden;
+  background: #1a1a1a;
+}
+
+.home-video {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
   pointer-events: none;
 }
 
-/* Video emergente: aparece y desaparece de golpe, como los textos.
-   z-index 0 lo deja sobre el video de fondo y debajo de los textos (z-index 1) */
-.home-popup {
+.home-dot {
   position: absolute;
-  z-index: 0;
-  display: block;
-  height: auto;
-  pointer-events: none;
+  width: clamp(8px, 1.2vw, 14px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #e8251b;
+  translate: -50% -50%;
 }
 
 .home-text {
   position: absolute;
-  translate: -50% -50%;
+  left: var(--x);
+  translate: 0 -50%;
   z-index: 1;
-  white-space: nowrap;
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-size: clamp(13px, 1.6vw, 24px);
-  font-weight: 500;
-  /* Blanco perla */
-  color: #f0ece2;
+  white-space: pre;
   text-decoration: none;
+  line-height: 1;
+}
+
+.home-center {
+  translate: -50% -50%;
+}
+
+/* Frase, crédito y poema: serif */
+.home-phrase,
+.home-credit,
+.home-small {
+  font-family: 'Spectral', Georgia, 'Times New Roman', serif;
+  font-weight: 400;
+}
+
+.home-phrase {
+  font-size: clamp(13px, 2vw, 30px);
+  color: #ffffff;
+}
+
+.home-credit {
+  font-size: clamp(12px, 1.7vw, 24px);
+  color: #1a1a1a;
+}
+
+/* Secciones: letra condensada y gruesa, negra */
+.home-link {
+  font-family: 'Anton', 'Impact', 'Arial Narrow', sans-serif;
+  font-size: clamp(22px, 3.9vw, 64px);
+  letter-spacing: -0.03em;
+  color: #111111;
+  transition: opacity 0.25s ease;
+}
+
+.home-link:hover,
+.home-link:focus-visible {
+  opacity: 0.6;
+}
+
+.home-small {
+  font-size: clamp(8px, 0.95vw, 14px);
+  color: #1a1a1a;
 }
 
 /* Aparición cruda: cada texto está oculto y aparece de golpe, sin fundido,
@@ -312,12 +229,10 @@ export default {
   }
 }
 
-.home-link {
-  transition: opacity 0.25s ease;
-}
-
-.home-link:hover,
-.home-link:focus-visible {
-  opacity: 0.6;
+/* Celular */
+@media (max-width: 700px) {
+  .home-text {
+    left: var(--mx);
+  }
 }
 </style>

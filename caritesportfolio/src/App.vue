@@ -4,7 +4,8 @@
     :class="{ 'is-visible': ready, 'intro-done': introDone }"
     @transitionend.self="finishIntro"
   >
-    <header class="site-header">
+    <!-- El inicio no lleva el ícono (como la referencia) -->
+    <header v-show="$route.path !== '/'" class="site-header">
       <RouterLink to="/">
         <img class="site-icon" src="/Subject.png" alt="Carites">
       </RouterLink>
@@ -19,9 +20,11 @@
   <Transition name="welcome">
     <!-- El video del welcome está en public/index.html (#welcome-video), debajo
          de esta capa, para que cargue antes que el JavaScript -->
-    <div v-if="!ready" class="welcome">
-      <!-- Hay que llegar a 10 puntos en el snake para entrar -->
-      <WelcomeSnake @win="enter" />
+    <div v-if="!ready" class="welcome" @click="onWelcomeClick">
+      <!-- Snake: hay que llegar a GOAL puntos para entrar. Desactivado por
+           ahora (SNAKE_ENABLED); se entra con clic o Enter -->
+      <WelcomeSnake v-if="SNAKE_ENABLED" @win="enter" />
+      <p v-else class="welcome-enter" :class="{ 'is-off': !blinkOn }">{{ enterText }}</p>
     </div>
   </Transition>
 </template>
@@ -33,6 +36,11 @@ import WelcomeSnake from './components/WelcomeSnake.vue'
 // Duración del zoom de entrada del inicio (debe coincidir con .home-screen)
 const INTRO_ZOOM_MS = 1600
 const WELCOME_FADE_MS = 1100 // debe coincidir con .welcome-leave-active
+// Juego de la culebrita en el welcome. En false se entra con clic (celular)
+// o Enter (computadora)
+const SNAKE_ENABLED = false
+// El texto titila al ritmo del "(9)" del video: 1 s oculto, 1 s visible
+const BLINK_MS = 1000
 
 export default {
   name: 'App',
@@ -45,21 +53,52 @@ export default {
   },
   data() {
     return {
+      SNAKE_ENABLED,
       ready: false,
-      introDone: false
+      introDone: false,
+      blinkOn: false,
+      // Celular (sin cursor): clic. Computadora: Enter
+      enterText: window.matchMedia('(hover: none), (pointer: coarse)').matches
+        ? 'haz click para entrar'
+        : 'presiona enter para entrar'
     }
+  },
+  mounted() {
+    if (SNAKE_ENABLED) return
+    window.addEventListener('keydown', this.onWelcomeKey)
+    // Titileo sincronizado con el tiempo del video del welcome; si el video
+    // no está corriendo, sigue el reloj
+    const video = document.getElementById('welcome-video')
+    const start = performance.now()
+    const tick = (now) => {
+      if (this.ready) return
+      const ms = video && video.currentTime > 0 ? video.currentTime * 1000 : now - start
+      this.blinkOn = Math.floor(ms / BLINK_MS) % 2 === 1
+      this.blinkFrame = requestAnimationFrame(tick)
+    }
+    this.blinkFrame = requestAnimationFrame(tick)
   },
   beforeUnmount() {
     clearTimeout(this.introTimer)
+    cancelAnimationFrame(this.blinkFrame)
+    window.removeEventListener('keydown', this.onWelcomeKey)
   },
   methods: {
     // Ganó el snake: se quita el welcome (con su video) y empieza el zoom de entrada
     enter() {
+      if (this.ready) return
       this.ready = true
+      window.removeEventListener('keydown', this.onWelcomeKey)
       this.hideWelcomeVideo(document.getElementById('welcome-video'))
       // Respaldo por si no llega el evento de fin del zoom (p. ej. con
       // "reducir movimiento" no hay transición)
       this.introTimer = setTimeout(this.finishIntro, INTRO_ZOOM_MS + 100)
+    },
+    onWelcomeKey(e) {
+      if (e.key === 'Enter') this.enter()
+    },
+    onWelcomeClick() {
+      if (!SNAKE_ENABLED) this.enter()
     },
     // Desvanece el video del welcome junto con su capa y luego lo quita
     hideWelcomeVideo(video) {
@@ -162,6 +201,32 @@ body {
 
 .welcome-leave-to {
   opacity: 0;
+}
+
+/* "Presiona enter / haz click para entrar": amarillo con un contorno oscuro
+   fino, como el "(9)" del video, y titila con cortes secos al mismo ritmo */
+.welcome {
+  cursor: pointer;
+}
+
+.welcome-enter {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(12vh + env(safe-area-inset-bottom, 0px));
+  margin: 0;
+  padding: 0 16px;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: clamp(14px, 2.5vh, 26px);
+  font-weight: 500;
+  color: #dede3a;
+  text-shadow:
+    -1px -1px 0 #111, 1px -1px 0 #111, -1px 1px 0 #111, 1px 1px 0 #111,
+    0 0 12px rgba(0, 0, 0, 0.6);
+}
+
+.welcome-enter.is-off {
+  visibility: hidden;
 }
 
 /* El header va siempre adelante de las páginas (y de las imágenes en hover).
