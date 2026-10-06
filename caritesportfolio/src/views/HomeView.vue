@@ -274,11 +274,11 @@ export default {
   }
 
   .home-phrase {
-    font-size: 17px;
+    font-size: 14px;
   }
 
   .home-credit {
-    font-size: 13px;
+    font-size: 11px;
     letter-spacing: 0.04em;
   }
 
@@ -288,7 +288,7 @@ export default {
   }
 
   .home-small {
-    font-size: 10.5px;
+    font-size: 8.5px;
   }
 }
 </style>
