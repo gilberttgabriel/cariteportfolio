@@ -39,6 +39,7 @@ const WELCOME_FADE_MS = 1100 // debe coincidir con .welcome-leave-active
 // Juego de la culebrita en el welcome. En false se entra con clic (celular)
 // o Enter (computadora)
 const SNAKE_ENABLED = false
+const SKIP_WELCOME = window.__skipWelcome === true
 // El texto titila al ritmo del "(9)" del video: 1 s oculto, 1 s visible
 const BLINK_MS = 1000
 
@@ -55,8 +56,9 @@ export default {
   data() {
     return {
       SNAKE_ENABLED,
-      ready: false,
-      introDone: false,
+      // Al refrescar se entra directo, sin welcome ni zoom (ver index.html)
+      ready: SKIP_WELCOME,
+      introDone: SKIP_WELCOME,
       blinkOn: false,
       // Celular (sin cursor): clic. Computadora: Enter
       enterText: window.matchMedia('(hover: none), (pointer: coarse)').matches
@@ -65,7 +67,7 @@ export default {
     }
   },
   mounted() {
-    if (SNAKE_ENABLED) return
+    if (SNAKE_ENABLED || SKIP_WELCOME) return
     window.addEventListener('keydown', this.onWelcomeKey)
     // Titileo sincronizado con el tiempo del video del welcome; si el video
     // no está corriendo, sigue el reloj

@@ -41,6 +41,19 @@
       preload="auto"
       aria-hidden="true"
     ></video>
+    <script>
+      // Al refrescar (en el inicio o en otra ruta) no se repite el welcome:
+      // solo sale al entrar a la página. App.vue lee window.__skipWelcome
+      (function () {
+        var nav = performance.getEntriesByType && performance.getEntriesByType('navigation')[0]
+        window.__skipWelcome = !!nav && nav.type === 'reload'
+        if (window.__skipWelcome) {
+          var video = document.getElementById('welcome-video')
+          video.pause()
+          video.remove()
+        }
+      })()
+    </script>
     <div id="app"></div>
     <!-- built files will be auto injected -->
   </body>

@@ -168,16 +168,16 @@ export default {
   -webkit-overflow-scrolling: touch;
 }
 
-/* --cell: lado de cada celda cuadrada. El espacio entre columnas es amplio
-   para que entren las notas */
+/* --cell: lado de cada celda cuadrada. Grandes y con poco espacio entre
+   celdas, para un look maximalista */
 .direct-grid {
-  --cell: min(40vw, 640px);
+  --cell: min(47vw, 1100px);
   display: grid;
   grid-template-columns: repeat(2, var(--cell));
   grid-auto-rows: var(--cell);
   justify-content: center;
-  gap: calc(var(--cell) * 0.08) calc(var(--cell) * 0.12);
-  padding: clamp(150px, 22vh, 220px) 16px 120px;
+  gap: calc(var(--cell) * 0.03) calc(var(--cell) * 0.04);
+  padding: clamp(20px, 10vh, 45px) 16px 120px;
 }
 
 .direct-cell {
@@ -213,7 +213,7 @@ export default {
 
 .direct-note {
   font-family: 'Reenie Beanie', 'Bradley Hand', 'Segoe Script', cursive;
-  font-size: calc(var(--cell) * 0.055);
+  font-size: calc(var(--cell) * 0.045);
   line-height: 1;
   white-space: nowrap;
   color: #2a2a2a;
@@ -240,9 +240,9 @@ export default {
 /* Celular: una sola columna */
 @media (max-width: 700px) {
   .direct-grid {
-    --cell: 84vw;
+    --cell: calc(100vw - 32px);
     grid-template-columns: var(--cell);
-    padding-top: 100px;
+    padding-top: 80px;
   }
 }
 </style>
