@@ -47,8 +47,9 @@ export default {
   components: { WelcomeSnake },
   provide() {
     return {
-      // El inicio terminó su zoom de entrada y ya se ve nítido
-      homeReady: computed(() => this.introDone)
+      // Se cerró el welcome: los textos del inicio empiezan a aparecer
+      // mientras hace el zoom de entrada, sin esperar a que termine
+      homeReady: computed(() => this.ready)
     }
   },
   data() {

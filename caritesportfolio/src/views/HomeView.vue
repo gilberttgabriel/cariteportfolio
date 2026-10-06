@@ -44,8 +44,10 @@ import video from '../assets/fondohome.mp4'
 // Los textos aparecen de golpe, de izquierda a derecha, uno cada POP_STAGGER_MS.
 // Empiezan cuando termina el zoom de entrada: durante el zoom el navegador
 // dibuja la página como imagen escalada y las letras se verían borrosas
-const POP_STAGGER_MS = 80
-const POP_DELAY_MS = 0 // espera extra tras terminar el zoom
+// Como una ola: primero los títulos grandes y después los chicos, cada grupo
+// de izquierda a derecha, todos con el mismo intervalo
+const POP_STAGGER_MS = 250
+const POP_DELAY_MS = 350 // espera extra tras terminar el zoom
 
 export default {
   name: 'HomeView',
@@ -86,9 +88,13 @@ export default {
   },
   computed: {
     // Orden de aparición de cada texto según su posición horizontal
+    // Orden de aparición: títulos grandes y luego el resto, cada grupo de
+    // izquierda a derecha
     popOrder() {
-      const sorted = [...this.texts].sort((a, b) => a.x - b.x)
-      return Object.fromEntries(sorted.map((text, i) => [text.label, i]))
+      const byX = (a, b) => a.x - b.x
+      const links = this.texts.filter((t) => t.kind === 'link').sort(byX)
+      const rest = this.texts.filter((t) => t.kind !== 'link').sort(byX)
+      return Object.fromEntries([...links, ...rest].map((text, i) => [text.label, i]))
     }
   },
   mounted() {
