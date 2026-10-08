@@ -164,6 +164,9 @@ export default {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  /* Encuadre un poco subido (centrado sería 50%) para no perder tanto de
+     la parte de arriba del video */
+  object-position: 50% 40%;
   pointer-events: none;
 }
 
@@ -257,6 +260,10 @@ export default {
 @media (max-width: 700px) {
   .home-hero {
     height: 47%;
+  }
+
+  .home-video {
+    object-position: 50% 50%;
   }
 
   .home-text,
