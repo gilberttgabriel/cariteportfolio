@@ -58,8 +58,8 @@ export default {
       textsIn: false,
       // Puntos rojos (centro)
       dots: [
-        { x: 3.6, y: 59, m: [7, 52] },
-        { x: 96.4, y: 94, m: [93, 95.5] }
+        { x: 3.6, y: 65.4, m: [7, 52] },
+        { x: 96.4, y: 94.9, m: [93, 95.5] }
       ],
       // Distribución tomada de la imagen de referencia. En celular: video más
       // bajo, secciones en escalera de borde a borde y poema a lo ancho
@@ -71,18 +71,18 @@ export default {
         { label: 'de', kind: 'phrase', x: 42, y: 14, m: [66, 13] },
         { label: 'mi mente', kind: 'phrase', x: 45.2, y: 21.6, m: [52, 21.5] },
         // Crédito, centrado bajo el video
-        { label: '©SN 2026', kind: 'credit', x: 50, y: 58, center: true, m: [50, 52] },
+        { label: '©SN 2026', kind: 'credit', x: 50, y: 64.5, center: true, m: [50, 52] },
         // Secciones
-        { label: 'Manifiesto', kind: 'link', to: '/bio', x: 6.9, y: 62.2, m: [6, 60.5] },
-        { label: 'Cinematography / DoP', kind: 'link', to: '/direct', x: 26.3, y: 71.1, m: [6, 68] },
-        { label: 'Stills', kind: 'link', to: '/fotos', x: 66, y: 77, m: [64, 75.5, 'r'] },
-        { label: 'Content', kind: 'link', to: '/redes', x: 82.9, y: 86.4, m: [94, 83, 'r'] },
+        { label: 'Manifiesto', kind: 'link', to: '/bio', x: 6.9, y: 68.1, m: [6, 60.5] },
+        { label: 'Cinematography / DoP', kind: 'link', to: '/direct', x: 26.3, y: 75.6, m: [6, 68] },
+        { label: 'Stills', kind: 'link', to: '/fotos', x: 66, y: 80.6, m: [64, 75.5, 'r'] },
+        { label: 'Content', kind: 'link', to: '/redes', x: 82.9, y: 88.5, m: [94, 83, 'r'] },
         // Poema chico, abajo a la izquierda
-        { label: 'revisitando', kind: 'small', x: 2.8, y: 90.5, m: [6, 90] },
-        { label: 'mis memorias', kind: 'small', x: 11.3, y: 92.4, m: [30, 92.3] },
-        { label: 'constantemente', kind: 'small', x: 20.4, y: 90.5, m: [56, 90] },
-        { label: 'descalzo', kind: 'small', x: 2.8, y: 94.4, m: [6, 94.6] },
-        { label: 'por  el eterno caribe.', kind: 'small', x: 18.4, y: 94.4, m: [44, 94.6] }
+        { label: 'revisitando', kind: 'small', x: 2.8, y: 92, m: [6, 90] },
+        { label: 'mis memorias', kind: 'small', x: 11.3, y: 93.6, m: [30, 92.3] },
+        { label: 'constantemente', kind: 'small', x: 20.4, y: 92, m: [56, 90] },
+        { label: 'descalzo', kind: 'small', x: 2.8, y: 95.3, m: [6, 94.6] },
+        { label: 'por  el eterno caribe.', kind: 'small', x: 18.4, y: 95.3, m: [44, 94.6] }
       ]
     }
   },
@@ -148,13 +148,13 @@ export default {
   background-color: #ffffff;
 }
 
-/* Video arriba, ocupando el 55% de la pantalla */
+/* Video arriba, ocupando el 62% de la pantalla */
 .home-hero {
   position: absolute;
   left: 0;
   right: 0;
   top: 0;
-  height: 55%;
+  height: 62%;
   overflow: hidden;
   background: #1a1a1a;
 }
