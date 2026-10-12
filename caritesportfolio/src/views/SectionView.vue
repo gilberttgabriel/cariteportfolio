@@ -4,13 +4,13 @@
     :class="{ 'section-plain': !bg || light }"
     :style="pageStyle"
   >
-    <!-- La sección se desplaza entera. Al final hay una zona "contacto": al
-         seguir bajando hasta verla completa, se pasa a la página de contacto -->
+    <!-- La sección se desplaza entera. Al final hay una zona "contacto": ya en
+         el final, al seguir empujando hacia abajo se pasa a contacto -->
     <div ref="scroller" class="section-scroll">
-      <!-- En contacto, si se llegó bajando desde otra sección: zona arriba que
-           al subir hasta verla devuelve a esa sección -->
+      <!-- En contacto, si se llegó bajando desde otra sección: zona arriba;
+           ya arriba del todo, al seguir empujando hacia arriba se vuelve -->
       <div v-if="canGoBack" ref="back" class="section-next section-back">
-        <span class="section-next-arrow">↑</span>
+        <span class="section-next-arrow" :style="{ '--pull': pull }">↑</span>
         <span>(volver)</span>
       </div>
       <div class="section-body">
@@ -21,7 +21,7 @@
       </div>
       <div v-if="toContact" ref="next" class="section-next">
         <span>(contacto)</span>
-        <span class="section-next-arrow">↓</span>
+        <span class="section-next-arrow" :style="{ '--pull': pull }">↓</span>
       </div>
     </div>
   </div>
@@ -33,9 +33,18 @@ import StillsGallery from '../components/StillsGallery.vue'
 import ContactInfo from '../components/ContactInfo.vue'
 import ManifestoInfo from '../components/ManifestoInfo.vue'
 
-// Parte de la zona final (o la de volver) que tiene que verse para cambiar
-// de página
-const NEXT_RATIO = 0.9
+// Cambio de página con intención: al llegar al final (o al principio en
+// contacto) hay que seguir empujando. Cuánto: con la rueda del mouse
+// (suma de desplazamiento, px) y con el dedo (recorrido, px)
+const PULL_WHEEL = 350
+const PULL_TOUCH = 110
+// Si se deja de empujar este tiempo, la cuenta vuelve a cero
+const PULL_RESET_MS = 500
+// Margen para considerar que ya se está en el borde, en px
+const EDGE = 2
+// Al llegar al borde, la rueda no suma durante este tiempo: así la inercia
+// del scroll (trackpads) no cambia de página sola; hace falta empujar de nuevo
+const EDGE_ARM_MS = 400
 
 // Recorrido sección → contacto → sección, compartido entre páginas:
 // cameFrom: sección desde la que se bajó a contacto
@@ -66,6 +75,8 @@ export default {
     return {
       // Solo en contacto, si se llegó bajando desde otra sección
       canGoBack: this.$route.path === '/contacto' && flow.cameFrom !== null,
+      // Empuje acumulado en el borde, de 0 a 1 (mueve la flecha)
+      pull: 0,
       cameFromPath: flow.cameFrom
     }
   },
@@ -90,15 +101,79 @@ export default {
       scroller.scrollTop = zone.offsetHeight
     } else if (this.toContact && flow.returning) {
       // De vuelta desde contacto: la sección abre en su final, con la zona
-      // de contacto a medio ver (sin llegar a disparar el cambio)
+      // de contacto a medio ver
       scroller.scrollTop = scroller.scrollHeight - scroller.clientHeight - zone.offsetHeight / 2
     }
     flow.returning = false
     if (!this.toContact) flow.cameFrom = null
-    if (!zone || !window.IntersectionObserver) return
-    // Se observa con el scroll ya ubicado
-    this.observer = new IntersectionObserver((entries) => {
-      if (!entries.some((e) => e.intersectionRatio >= NEXT_RATIO) || this.leaving) return
+    if (!zone) return
+    scroller.addEventListener('wheel', this.onWheel, { passive: true })
+    scroller.addEventListener('touchstart', this.onTouchStart, { passive: true })
+    scroller.addEventListener('touchmove', this.onTouchMove, { passive: true })
+    scroller.addEventListener('touchend', this.onTouchEnd, { passive: true })
+  },
+  beforeUnmount() {
+    clearTimeout(this.pullTimer)
+    const scroller = this.$refs.scroller
+    if (!scroller) return
+    scroller.removeEventListener('wheel', this.onWheel)
+    scroller.removeEventListener('touchstart', this.onTouchStart)
+    scroller.removeEventListener('touchmove', this.onTouchMove)
+    scroller.removeEventListener('touchend', this.onTouchEnd)
+  },
+  methods: {
+    // ¿Está en el borde desde el que se cambia de página? Abajo del todo en
+    // las secciones; arriba del todo en contacto (para volver)
+    atEdge() {
+      const el = this.$refs.scroller
+      if (this.toContact) return el.scrollTop >= el.scrollHeight - el.clientHeight - EDGE
+      return el.scrollTop <= EDGE
+    },
+    // Suma empuje (0 a 1). La flecha lo muestra; al llegar a 1 cambia de página
+    addPull(amount) {
+      this.pull = Math.min(1, Math.max(0, this.pull + amount))
+      clearTimeout(this.pullTimer)
+      this.pullTimer = setTimeout(() => { this.pull = 0 }, PULL_RESET_MS)
+      if (this.pull >= 1) this.go()
+    },
+    onWheel(e) {
+      // Hacia abajo en las secciones, hacia arriba en contacto
+      const push = this.toContact ? e.deltaY : -e.deltaY
+      if (push <= 0 || !this.atEdge()) {
+        this.pull = 0
+        this.edgeSince = null
+        return
+      }
+      const now = performance.now()
+      if (this.edgeSince == null) this.edgeSince = now
+      if (now - this.edgeSince < EDGE_ARM_MS) return
+      this.addPull(push / PULL_WHEEL)
+    },
+    onTouchStart(e) {
+      this.touchY = e.touches[0].clientY
+      this.touchPull = 0
+    },
+    onTouchMove(e) {
+      if (this.touchY === undefined) return
+      const y = e.touches[0].clientY
+      // Dedo hacia arriba = contenido hacia abajo (secciones); al revés en contacto
+      const push = this.toContact ? this.touchY - y : y - this.touchY
+      this.touchY = y
+      if (push <= 0 || !this.atEdge()) {
+        this.touchPull = 0
+        this.pull = 0
+        return
+      }
+      this.touchPull += push
+      this.pull = Math.min(1, this.touchPull / PULL_TOUCH)
+      if (this.pull >= 1) this.go()
+    },
+    onTouchEnd() {
+      this.touchY = undefined
+      if (!this.leaving) this.pull = 0
+    },
+    go() {
+      if (this.leaving) return
       this.leaving = true
       if (this.toContact) {
         // Bajando al final: a contacto, recordando de dónde se vino
@@ -106,15 +181,10 @@ export default {
         this.$router.push('/contacto')
       } else {
         // Subiendo en contacto: de vuelta a la sección
-        const back = this.cameFromPath
         flow.returning = true
-        this.$router.push(back)
+        this.$router.push(this.cameFromPath)
       }
-    }, { root: scroller, threshold: NEXT_RATIO })
-    this.observer.observe(zone)
-  },
-  beforeUnmount() {
-    if (this.observer) this.observer.disconnect()
+    }
   }
 }
 </script>
@@ -159,7 +229,14 @@ export default {
 }
 
 .section-next-arrow {
+  display: inline-block;
   animation: section-next 1.2s steps(1) infinite;
+  /* Se corre hacia el cambio de página a medida que se empuja */
+  translate: 0 calc(var(--pull, 0) * 28px);
+}
+
+.section-back .section-next-arrow {
+  translate: 0 calc(var(--pull, 0) * -28px);
 }
 
 @keyframes section-next {
