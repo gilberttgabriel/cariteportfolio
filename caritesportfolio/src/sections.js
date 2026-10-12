@@ -1,5 +1,3 @@
-import fondo4 from './assets/fondo4.webp'
-
 // Páginas internas. El router crea una ruta por cada una.
 // bg: fondo de la página (opcional). img: foto de su galería.
 // Opcionales para fondos que no son textura:
@@ -27,7 +25,6 @@ export default [
     projects: true,
     img: '/directimg.jpg'
   },
-  { name: 'redes', to: '/redes', bg: fondo4, img: '/redesimg.jpeg' },
   {
     name: 'bio',
     to: '/bio',

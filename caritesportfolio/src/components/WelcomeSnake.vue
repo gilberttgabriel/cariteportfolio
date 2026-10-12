@@ -13,6 +13,7 @@
 // El tablero ocupa toda la pantalla sobre el video, con fondo transparente.
 // Sin paredes: al salir por un borde entra por el opuesto. Empieza solo y
 // chocar con la propia cola reinicia la partida
+const FONT_ID = 'snake-font'
 const GOAL = 5
 const CELLS = 26 // casillas del lado más corto de la pantalla
 const TICK_MS = 110 // velocidad: un paso cada TICK_MS
@@ -35,6 +36,14 @@ export default {
     }
   },
   mounted() {
+    // Letra pixelada: se pide solo cuando el juego está activado
+    if (!document.getElementById(FONT_ID)) {
+      const link = document.createElement('link')
+      link.id = FONT_ID
+      link.rel = 'stylesheet'
+      link.href = 'https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap'
+      document.head.appendChild(link)
+    }
     this.resize()
     this.reset()
     this.start()

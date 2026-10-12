@@ -1,15 +1,33 @@
 <!DOCTYPE html>
-<html lang="">
+<html lang="es">
   <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width,initial-scale=1.0">
-    <title><%= htmlWebpackPlugin.options.title %></title>
+    <title>Santiago Núñez — Cinematography / DoP</title>
+    <meta name="description" content="Santiago Núñez: dirección de fotografía, stills y proyectos audiovisuales. Un pedazo digital de mi mente.">
+    <meta name="theme-color" content="#ffffff">
+    <!-- Ícono de la pestaña (el de Carite) -->
+    <link rel="icon" type="image/png" href="<%= BASE_URL %>favicon.png">
+    <link rel="apple-touch-icon" href="<%= BASE_URL %>apple-touch-icon.png">
+    <!-- Vista previa al compartir el enlace (WhatsApp, Instagram, X…) -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Santiago Núñez">
+    <meta property="og:title" content="Santiago Núñez — Cinematography / DoP">
+    <meta property="og:description" content="Un pedazo digital de mi mente.">
+    <meta property="og:url" content="https://cariteportfolio.vercel.app/">
+    <meta property="og:image" content="https://cariteportfolio.vercel.app/og-image.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:locale" content="es_ES">
+    <meta name="twitter:card" content="summary_large_image">
     <!-- Primer cuadro del welcome: se pide de inmediato -->
     <link rel="preload" href="<%= BASE_URL %>welcome-poster.jpg" as="image">
-    <!-- Letras: Anton y Spectral del inicio, pixelada del snake y manuscrita de direct -->
+    <!-- Letras: Anton y Spectral (inicio y secciones) y manuscrita de Stills.
+         La pixelada del snake la carga el juego solo si está activado -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Press+Start+2P&family=Reenie+Beanie&family=Spectral:wght@400&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Reenie+Beanie&family=Spectral:wght@400;700&display=swap">
     <style>
       body { margin: 0; background: #000000; }
       /* Video del welcome: va en el HTML (no en Vue) para que empiece a cargar

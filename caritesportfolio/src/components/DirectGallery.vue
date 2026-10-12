@@ -24,7 +24,7 @@
             preload="metadata"
             aria-hidden="true"
           ></video>
-          <img v-else :src="project.src" alt="" decoding="async" :loading="i < 2 ? 'eager' : 'lazy'">
+          <img v-else :src="project.src" :srcset="srcset(project.src)" sizes="(max-width: 700px) 62vw, 50vw" alt="" decoding="async" :loading="i < 2 ? 'eager' : 'lazy'">
         </div>
 
         <!-- Ficha del proyecto -->
@@ -39,6 +39,8 @@
 </template>
 
 <script>
+import { srcset } from '../images'
+
 // Proyectos. video: archivo del video en bucle (cuando esté); src: imagen
 // provisoria. name, title, year: la ficha de al lado
 const PROJECTS = [
@@ -72,6 +74,7 @@ export default {
     document.removeEventListener('scroll', this.onResize, { capture: true })
   },
   methods: {
+    srcset,
     // Busca el proyecto más cercano al centro de la pantalla (una vez por cuadro)
     onScroll() {
       // En computadora no hace falta (el color va con el cursor): no se hace

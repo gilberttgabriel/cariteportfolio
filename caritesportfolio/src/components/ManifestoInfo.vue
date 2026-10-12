@@ -4,7 +4,7 @@
        el segundo la de abajo a la derecha: unos flotantes invisibles del
        tamaño de la foto hacen que las líneas se corten justo en su borde -->
   <div ref="root" class="manifesto" :style="rootStyle">
-    <img class="manifesto-photo" :src="photo" alt="" decoding="async" :style="photoStyle">
+    <img class="manifesto-photo" :src="photo" :srcset="srcset(photo)" sizes="(max-width: 700px) 36vw, 20vw" alt="" decoding="async" :style="photoStyle">
 
     <p ref="text1" class="manifesto-text manifesto-text--1" :style="box1">
       <span class="manifesto-cut manifesto-cut--spacer" :style="{ height: cut1.top + 'px' }"></span>
@@ -20,6 +20,8 @@
 </template>
 
 <script>
+import { srcset } from '../images'
+
 // Espacio entre el texto y el borde de la foto, en px
 const GAP = 14
 // Espera tras el último cambio de tamaño de la ventana antes de recalcular
@@ -78,6 +80,7 @@ export default {
     window.removeEventListener('resize', this.onResize)
   },
   methods: {
+    srcset,
     // Celular: misma idea que en computadora, en una página que se desplaza.
     // La foto (más chica, al centro) se ubica donde termina el texto 1, de modo
     // que este rodee su mitad de arriba por la izquierda; el texto 2 rodea su

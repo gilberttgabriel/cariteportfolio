@@ -31,7 +31,7 @@
           :aria-label="'Ver ' + project.name"
           @click="toggle(i)"
         >
-          <img class="stills-cover-img" :src="project.cover" alt="" decoding="async">
+          <img class="stills-cover-img" :src="project.cover" :srcset="srcset(project.cover)" sizes="100vw" alt="" decoding="async">
           <span class="stills-name">{{ project.name }}</span>
         </button>
 
@@ -40,7 +40,7 @@
           <div class="stills-content-inner">
             <p class="stills-caption">{{ project.caption }}</p>
             <div class="stills-photos">
-              <img v-for="src in project.photos" :key="src" :src="src" alt="" loading="lazy" decoding="async">
+              <img v-for="src in project.photos" :key="src" :src="src" :srcset="srcset(src)" sizes="(max-width: 700px) 100vw, 33vw" alt="" loading="lazy" decoding="async">
             </div>
           </div>
         </div>
@@ -54,6 +54,8 @@
 </template>
 
 <script>
+import { srcset } from '../images'
+
 // Proyectos con imágenes de prueba de la carpeta public.
 // notes: textos a mano
 // en el espacio en blanco de arriba de cada portada (x, y en % de ese espacio)
@@ -112,6 +114,7 @@ export default {
     document.removeEventListener('scroll', this.onResize, { capture: true })
   },
   methods: {
+    srcset,
     // Abre un proyecto (y cierra el que estuviera abierto)
     toggle(i) {
       this.open = this.open === i ? -1 : i
