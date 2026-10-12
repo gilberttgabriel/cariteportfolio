@@ -8,9 +8,9 @@
          el final, al seguir empujando hacia abajo se pasa a contacto -->
     <div ref="scroller" class="section-scroll">
       <!-- En contacto, si se llegó bajando desde otra sección: zona arriba;
-           ya arriba del todo, al seguir empujando hacia arriba se vuelve -->
+           al subir hasta arriba del todo se vuelve a esa sección -->
       <div v-if="canGoBack" ref="back" class="section-next section-back">
-        <span class="section-next-arrow" :style="{ '--pull': pull }">↑</span>
+        <span class="section-next-arrow">↑</span>
         <span>(volver)</span>
       </div>
       <div class="section-body">
@@ -33,8 +33,8 @@ import StillsGallery from '../components/StillsGallery.vue'
 import ContactInfo from '../components/ContactInfo.vue'
 import ManifestoInfo from '../components/ManifestoInfo.vue'
 
-// Cambio de página con intención: al llegar al final (o al principio en
-// contacto) hay que seguir empujando. Cuánto: con la rueda del mouse
+// Ir a contacto con intención: al llegar al final hay que seguir empujando
+// (volver desde contacto, en cambio, es inmediato). Cuánto: con la rueda del mouse
 // (suma de desplazamiento, px) y con el dedo (recorrido, px)
 const PULL_WHEEL = 350
 const PULL_TOUCH = 110
@@ -107,6 +107,11 @@ export default {
     flow.returning = false
     if (!this.toContact) flow.cameFrom = null
     if (!zone) return
+    if (!this.toContact) {
+      // Volver desde contacto: sin fricción, al llegar arriba del todo
+      scroller.addEventListener('scroll', this.onScrollBack, { passive: true })
+      return
+    }
     scroller.addEventListener('wheel', this.onWheel, { passive: true })
     scroller.addEventListener('touchstart', this.onTouchStart, { passive: true })
     scroller.addEventListener('touchmove', this.onTouchMove, { passive: true })
@@ -116,18 +121,22 @@ export default {
     clearTimeout(this.pullTimer)
     const scroller = this.$refs.scroller
     if (!scroller) return
+    scroller.removeEventListener('scroll', this.onScrollBack)
     scroller.removeEventListener('wheel', this.onWheel)
     scroller.removeEventListener('touchstart', this.onTouchStart)
     scroller.removeEventListener('touchmove', this.onTouchMove)
     scroller.removeEventListener('touchend', this.onTouchEnd)
   },
   methods: {
-    // ¿Está en el borde desde el que se cambia de página? Abajo del todo en
-    // las secciones; arriba del todo en contacto (para volver)
+    // Contacto: apenas se llega arriba del todo (zona de volver a la vista),
+    // se vuelve a la sección de origen
+    onScrollBack() {
+      if (this.$refs.scroller.scrollTop <= EDGE) this.go()
+    },
+    // ¿Está abajo del todo? (desde ahí se empuja para ir a contacto)
     atEdge() {
       const el = this.$refs.scroller
-      if (this.toContact) return el.scrollTop >= el.scrollHeight - el.clientHeight - EDGE
-      return el.scrollTop <= EDGE
+      return el.scrollTop >= el.scrollHeight - el.clientHeight - EDGE
     },
     // Suma empuje (0 a 1). La flecha lo muestra; al llegar a 1 cambia de página
     addPull(amount) {
@@ -137,8 +146,7 @@ export default {
       if (this.pull >= 1) this.go()
     },
     onWheel(e) {
-      // Hacia abajo en las secciones, hacia arriba en contacto
-      const push = this.toContact ? e.deltaY : -e.deltaY
+      const push = e.deltaY
       if (push <= 0 || !this.atEdge()) {
         this.pull = 0
         this.edgeSince = null
@@ -156,8 +164,8 @@ export default {
     onTouchMove(e) {
       if (this.touchY === undefined) return
       const y = e.touches[0].clientY
-      // Dedo hacia arriba = contenido hacia abajo (secciones); al revés en contacto
-      const push = this.toContact ? this.touchY - y : y - this.touchY
+      // Dedo hacia arriba = contenido hacia abajo
+      const push = this.touchY - y
       this.touchY = y
       if (push <= 0 || !this.atEdge()) {
         this.touchPull = 0
@@ -233,10 +241,6 @@ export default {
   animation: section-next 1.2s steps(1) infinite;
   /* Se corre hacia el cambio de página a medida que se empuja */
   translate: 0 calc(var(--pull, 0) * 28px);
-}
-
-.section-back .section-next-arrow {
-  translate: 0 calc(var(--pull, 0) * -28px);
 }
 
 @keyframes section-next {

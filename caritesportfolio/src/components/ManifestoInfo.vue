@@ -122,7 +122,13 @@ export default {
       this.cut2 = { width: px + pw - padL + GAP, height: photoTop + ph - top2 + GAP }
       await this.$nextTick()
       const bottom = Math.max(top2 + this.$refs.text2.offsetHeight, photoTop + ph)
-      this.rootStyle = { height: bottom + padB + 'px' }
+
+      // Centrado vertical: si todo entra en la pantalla, se baja el bloque
+      // para que quede al medio (si no entra, empieza bajo el ícono)
+      const view = root.parentElement.clientHeight
+      const content = bottom - padT
+      const shift = Math.max(0, (view - content) / 2 - padT)
+      this.rootStyle = { height: bottom + padB + 'px', top: shift + 'px' }
     },
     // Ubica los textos alrededor de la foto y calcula los recortes
     layout() {
