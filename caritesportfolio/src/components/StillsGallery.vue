@@ -4,7 +4,7 @@
        el cursor (o al quedar al centro de la pantalla en celular) se revela a
        color con su nombre. Al hacer clic se despliegan las fotos del proyecto.
        Entre portadas hay espacios en blanco reservados para ilustraciones -->
-  <div ref="scroller" class="stills" @scroll.passive="onScroll">
+  <div class="stills">
     <div class="stills-column">
       <section
         v-for="(project, i) in projects"
@@ -101,11 +101,15 @@ export default {
     this.touch = window.matchMedia(TOUCH_QUERY)
     this.onResize = () => this.onScroll()
     window.addEventListener('resize', this.onResize)
+    // La página que se desplaza es la de la sección (contenedor de arriba):
+    // se escucha el scroll en fase de captura para enterarse igual
+    document.addEventListener('scroll', this.onResize, { capture: true, passive: true })
     this.$nextTick(this.onScroll)
   },
   beforeUnmount() {
     cancelAnimationFrame(this.frame)
     window.removeEventListener('resize', this.onResize)
+    document.removeEventListener('scroll', this.onResize, { capture: true })
   },
   methods: {
     // Abre un proyecto (y cierra el que estuviera abierto)
@@ -139,12 +143,10 @@ export default {
 </script>
 
 <style>
+/* Se desplaza junto con la página de la sección (SectionView) */
 .stills {
-  position: absolute;
-  inset: 0;
-  overflow-y: auto;
+  position: relative;
   overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
 }
 
 /* Columna centrada y simétrica, casi de borde a borde. --w: ancho */
@@ -160,7 +162,7 @@ export default {
 /* Espacio en blanco entre portadas, reservado para ilustraciones */
 .stills-space {
   position: relative;
-  height: clamp(140px, 22vw, 320px);
+  height: clamp(80px, 11vw, 170px);
 }
 
 .stills-caption {

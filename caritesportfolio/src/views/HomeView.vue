@@ -76,7 +76,7 @@ export default {
         { label: 'Manifiesto', kind: 'link', to: '/bio', x: 6.9, y: 68.1, m: [6, 60.5] },
         { label: 'Cinematography / DoP', kind: 'link', to: '/direct', x: 26.3, y: 75.6, m: [6, 68] },
         { label: 'Stills', kind: 'link', to: '/fotos', x: 66, y: 80.6, m: [64, 75.5, 'r'] },
-        { label: 'Content', kind: 'link', to: '/redes', x: 82.9, y: 88.5, m: [94, 83, 'r'] },
+        { label: 'Contact', kind: 'link', to: '/contacto', x: 82.9, y: 88.5, m: [94, 83, 'r'] },
         // Poema chico, abajo a la izquierda
         { label: 'revisitando', kind: 'small', x: 2.8, y: 92, m: [6, 90] },
         { label: 'mis memorias', kind: 'small', x: 11.3, y: 93.6, m: [30, 92.3] },

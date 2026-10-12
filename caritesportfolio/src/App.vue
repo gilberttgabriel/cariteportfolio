@@ -12,7 +12,8 @@
     </header>
     <RouterView v-slot="{ Component }">
       <Transition name="page">
-        <component :is="Component" />
+        <!-- key: cada ruta es una página nueva (con su scroll desde arriba) -->
+        <component :is="Component" :key="$route.path" />
       </Transition>
     </RouterView>
   </div>

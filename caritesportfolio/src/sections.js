@@ -5,7 +5,8 @@ import fondo4 from './assets/fondo4.webp'
 // Opcionales para fondos que no son textura:
 //   bgColor: color debajo del fondo. bgSize: 'contain' lo muestra completo
 //   (por defecto cubre la pantalla). light: fondo claro. projects: galería de direct.
-//   stills: galería de Stills.
+//   stills: galería de Stills. contact: datos de contacto.
+//   manifesto: página del manifiesto.
 export default [
   {
     name: 'fotos',
@@ -27,6 +28,22 @@ export default [
     img: '/directimg.jpg'
   },
   { name: 'redes', to: '/redes', bg: fondo4, img: '/redesimg.jpeg' },
-  { name: 'bio', to: '/bio', img: '/bioimg.jpg' },
-  { name: 'contacto', to: '/contacto', img: '/contactimg.jpg' }
+  {
+    name: 'bio',
+    to: '/bio',
+    // Manifiesto: dos textos y una foto en diagonal sobre blanco
+    bgColor: '#ffffff',
+    light: true,
+    manifesto: true,
+    img: '/bioimg.jpg'
+  },
+  {
+    name: 'contacto',
+    to: '/contacto',
+    // Teléfono, Instagram y correo en escalera sobre blanco
+    bgColor: '#ffffff',
+    light: true,
+    contact: true,
+    img: '/contactimg.jpg'
+  }
 ]
