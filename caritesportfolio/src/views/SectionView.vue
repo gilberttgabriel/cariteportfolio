@@ -5,15 +5,17 @@
     :style="pageStyle"
   >
     <DirectGallery v-if="projects" />
+    <StillsGallery v-else-if="stills" />
   </div>
 </template>
 
 <script>
 import DirectGallery from '../components/DirectGallery.vue'
+import StillsGallery from '../components/StillsGallery.vue'
 
 export default {
   name: 'SectionView',
-  components: { DirectGallery },
+  components: { DirectGallery, StillsGallery },
   props: {
     // Sin fondo, la página queda en blanco hueso
     bg: { type: String, default: null },
@@ -23,7 +25,9 @@ export default {
     light: { type: Boolean, default: false },
     img: { type: String, required: true },
     // Muestra la galería de proyectos (solo en direct)
-    projects: { type: Boolean, default: false }
+    projects: { type: Boolean, default: false },
+    // Muestra la galería de Stills (solo en fotos)
+    stills: { type: Boolean, default: false }
   },
   computed: {
     pageStyle() {
