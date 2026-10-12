@@ -4,7 +4,7 @@
        el segundo la de abajo a la derecha: unos flotantes invisibles del
        tamaño de la foto hacen que las líneas se corten justo en su borde -->
   <div ref="root" class="manifesto" :style="rootStyle">
-    <img class="manifesto-photo" :src="photo" alt="" :style="photoStyle">
+    <img class="manifesto-photo" :src="photo" alt="" decoding="async" :style="photoStyle">
 
     <p ref="text1" class="manifesto-text manifesto-text--1" :style="box1">
       <span class="manifesto-cut manifesto-cut--spacer" :style="{ height: cut1.top + 'px' }"></span>
@@ -22,6 +22,8 @@
 <script>
 // Espacio entre el texto y el borde de la foto, en px
 const GAP = 14
+// Espera tras el último cambio de tamaño de la ventana antes de recalcular
+const RESIZE_DELAY_MS = 150
 // Dónde empieza cada texto (en % de la pantalla) y dónde termina el segundo
 const TEXT1_LEFT = 0.2
 const TEXT1_TOP = 0.25
@@ -59,11 +61,21 @@ export default {
   },
   mounted() {
     this.media = window.matchMedia(MOBILE_QUERY)
-    window.addEventListener('resize', this.layout)
+    // Solo se recalcula si cambia el ancho: en celular, al hacer scroll la
+    // barra del navegador aparece y desaparece y dispara resize sin parar
+    this.lastWidth = window.innerWidth
+    this.onResize = () => {
+      if (window.innerWidth === this.lastWidth) return
+      this.lastWidth = window.innerWidth
+      clearTimeout(this.resizeTimer)
+      this.resizeTimer = setTimeout(this.layout, RESIZE_DELAY_MS)
+    }
+    window.addEventListener('resize', this.onResize)
     this.layout()
   },
   beforeUnmount() {
-    window.removeEventListener('resize', this.layout)
+    clearTimeout(this.resizeTimer)
+    window.removeEventListener('resize', this.onResize)
   },
   methods: {
     // Celular: misma idea que en computadora, en una página que se desplaza.

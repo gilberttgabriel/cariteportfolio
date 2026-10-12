@@ -175,7 +175,7 @@ body {
 /* Cambio de página: la nueva aparece encima de la anterior */
 .page-enter-active,
 .page-leave-active {
-  transition: opacity 0.5s ease;
+  transition: opacity 0.35s ease;
 }
 
 .page-enter-from,

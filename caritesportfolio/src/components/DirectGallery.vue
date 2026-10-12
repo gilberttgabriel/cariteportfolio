@@ -24,7 +24,7 @@
             preload="metadata"
             aria-hidden="true"
           ></video>
-          <img v-else :src="project.src" alt="" :loading="i < 2 ? 'eager' : 'lazy'">
+          <img v-else :src="project.src" alt="" decoding="async" :loading="i < 2 ? 'eager' : 'lazy'">
         </div>
 
         <!-- Ficha del proyecto -->
@@ -74,12 +74,15 @@ export default {
   methods: {
     // Busca el proyecto más cercano al centro de la pantalla (una vez por cuadro)
     onScroll() {
-      cancelAnimationFrame(this.frame)
+      // En computadora no hace falta (el color va con el cursor): no se hace
+      // ningún trabajo durante el scroll
+      if (!this.touch.matches) {
+        this.active = -1
+        return
+      }
+      if (this.frame) return
       this.frame = requestAnimationFrame(() => {
-        if (!this.touch.matches) {
-          this.active = -1
-          return
-        }
+        this.frame = null
         const middle = window.innerHeight / 2
         let best = -1
         let bestDist = Infinity

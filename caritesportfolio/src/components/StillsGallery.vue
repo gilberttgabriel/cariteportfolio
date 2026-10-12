@@ -31,7 +31,7 @@
           :aria-label="'Ver ' + project.name"
           @click="toggle(i)"
         >
-          <img class="stills-cover-img" :src="project.cover" alt="">
+          <img class="stills-cover-img" :src="project.cover" alt="" decoding="async">
           <span class="stills-name">{{ project.name }}</span>
         </button>
 
@@ -40,7 +40,7 @@
           <div class="stills-content-inner">
             <p class="stills-caption">{{ project.caption }}</p>
             <div class="stills-photos">
-              <img v-for="src in project.photos" :key="src" :src="src" alt="" loading="lazy">
+              <img v-for="src in project.photos" :key="src" :src="src" alt="" loading="lazy" decoding="async">
             </div>
           </div>
         </div>
@@ -118,12 +118,15 @@ export default {
     },
     // En celular, la portada más cercana al centro de la pantalla se revela
     onScroll() {
-      cancelAnimationFrame(this.frame)
+      // En computadora no hace falta (el color va con el cursor): no se hace
+      // ningún trabajo durante el scroll
+      if (!this.touch.matches) {
+        this.active = -1
+        return
+      }
+      if (this.frame) return
       this.frame = requestAnimationFrame(() => {
-        if (!this.touch.matches) {
-          this.active = -1
-          return
-        }
+        this.frame = null
         const middle = window.innerHeight / 2
         let best = -1
         let bestDist = Infinity
