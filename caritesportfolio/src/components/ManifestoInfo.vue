@@ -1,20 +1,18 @@
 <template>
-  <!-- Manifiesto: foto al centro y dos textos en diagonal que se acoplan a su
-       forma. El primero rodea la esquina de arriba a la izquierda de la foto y
-       el segundo la de abajo a la derecha: unos flotantes invisibles del
-       tamaño de la foto hacen que las líneas se corten justo en su borde -->
+  <!-- Manifiesto: dos textos que son las esquinas de una esfera con la foto
+       en el centro: el primero arriba a la izquierda y el segundo abajo a la
+       derecha. Las líneas se arman a mano: su borde de afuera sigue el arco
+       del círculo y el de adentro, el de la foto. La letra se ajusta sola -->
   <div ref="root" class="manifesto" :style="rootStyle">
     <img class="manifesto-photo" :src="photo" :srcset="srcset(photo)" sizes="(max-width: 700px) 36vw, 20vw" alt="" decoding="async" :style="photoStyle">
-
-    <p ref="text1" class="manifesto-text manifesto-text--1" :style="box1">
-      <span class="manifesto-cut manifesto-cut--spacer" :style="{ height: cut1.top + 'px' }"></span>
-      <span class="manifesto-cut manifesto-cut--right" :style="{ width: cut1.width + 'px', height: cut1.height + 'px' }"></span>
-      <span class="manifesto-dot manifesto-dot--start"></span>{{ texts[0] }}<span ref="end1"></span>
-    </p>
-
-    <p ref="text2" class="manifesto-text manifesto-text--2" :style="box2">
-      <span class="manifesto-cut manifesto-cut--left" :style="{ width: cut2.width + 'px', height: cut2.height + 'px' }"></span>
-      {{ texts[1] }}<span class="manifesto-dot"></span>
+    <p class="manifesto-sphere" :style="{ fontSize: fontSize + 'px' }" :aria-label="fullText">
+      <span
+        v-for="(w, i) in placed"
+        :key="i"
+        :class="w.dot ? 'manifesto-dot' : 'manifesto-word'"
+        :style="{ left: w.x + 'px', top: w.y + 'px' }"
+        aria-hidden="true"
+      >{{ w.dot ? '' : w.text }}</span>
     </p>
   </div>
 </template>
@@ -22,23 +20,38 @@
 <script>
 import { srcset } from '../images'
 
-// Espacio entre el texto y el borde de la foto, en px
-const GAP = 14
+// Diámetro del círculo en computadora: el menor entre % del alto y % del
+// ancho de la pantalla. En celular: el ancho menos este margen a cada lado (px)
+const DESKTOP_DIAMETER = { vh: 0.84, vw: 0.6 }
+const MOBILE_SIDE = 10
+// Foto en el centro: ancho en proporción al diámetro (computadora / celular)
+// y relación ancho / alto
+const PHOTO_WIDTH = { desktop: 0.3, mobile: 0.26 }
+const PHOTO_RATIO = 4 / 5
+// Espacio entre el texto y la foto, en px
+const GAP = 4
+// Alto de línea en proporción a la letra
+const LINE = 1.3
+// Justificado: si el espacio entre palabras pasaría de esto (en espacios
+// normales), no se estira y el tramo se alinea al borde del círculo
+const MAX_GAP = 3
+// Por encima (y por debajo) de la foto, cuánto se mete el texto sobre ella,
+// en proporción a su ancho
+const CORNER_OVERLAP = 0.3
+// Cuánto baja la primera esquina (y sube la segunda) pasando la mitad de la
+// foto, en proporción a su alto
+const CORNER_REACH = 0.18
+// Tramos más angostos que esto (en letras) se dejan vacíos
+const MIN_SEGMENT_EM = 2.2
+// Rango de tamaños de letra que se prueban para llenar el círculo
+const FONT_MIN = 6
+const FONT_MAX = 26
+const FONT = "'Spectral', Georgia, 'Times New Roman', serif"
+const MOBILE_QUERY = '(max-width: 700px)'
+// Tolerancia de redondeo al comparar bordes, en px
+const EPS = 0.5
 // Espera tras el último cambio de tamaño de la ventana antes de recalcular
 const RESIZE_DELAY_MS = 150
-// Dónde empieza cada texto (en % de la pantalla) y dónde termina el segundo
-const TEXT1_LEFT = 0.2
-const TEXT1_TOP = 0.25
-const TEXT2_TOP = 0.53
-const TEXT2_RIGHT = 0.82
-const MOBILE_QUERY = '(max-width: 700px)'
-// Foto (deben coincidir con .manifesto-photo): alto en % de la pantalla,
-// ancho / alto, y centro vertical
-const PHOTO_HEIGHT = 0.3
-const PHOTO_RATIO = 4 / 5
-const PHOTO_CENTER_Y = 0.52
-// Celular: ancho de la foto en proporción al ancho del texto
-const MOBILE_PHOTO_WIDTH = 0.36
 
 export default {
   name: 'ManifestoInfo',
@@ -46,22 +59,23 @@ export default {
     return {
       // Retrato provisorio
       photo: '/direct/3.jpg',
-      // Textos provisorios
+      // Textos provisorios (se leen seguidos, como un solo texto)
       texts: [
         'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Quis ipsum suspendisse ultrices gravida. Risus commodo viverra maecenas accumsan lacus vel facilisis. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.',
         'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Quis ipsum suspendisse ultrices gravida. Risus commodo viverra maecenas accumsan lacus vel facilisis. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem.'
       ],
-      // Cajas de los textos y recortes (calculados según la foto)
-      box1: {},
-      box2: {},
-      // Solo en celular: posición de la foto y alto total de la página
+      fontSize: 14,
+      placed: [],
       photoStyle: {},
-      rootStyle: {},
-      cut1: { top: 0, width: 0, height: 0 },
-      cut2: { width: 0, height: 0 }
+      rootStyle: {}
     }
   },
-  mounted() {
+  computed: {
+    fullText() {
+      return this.texts.join(' ')
+    }
+  },
+  async mounted() {
     this.media = window.matchMedia(MOBILE_QUERY)
     // Solo se recalcula si cambia el ancho: en celular, al hacer scroll la
     // barra del navegador aparece y desaparece y dispara resize sin parar
@@ -74,6 +88,11 @@ export default {
     }
     window.addEventListener('resize', this.onResize)
     this.layout()
+    // Las medidas de las palabras dependen de la letra: al terminar de
+    // cargar Spectral se vuelve a acomodar
+    if (document.fonts && document.fonts.load) {
+      document.fonts.load(`16px ${FONT}`).then(() => this.layout(), () => {})
+    }
   },
   beforeUnmount() {
     clearTimeout(this.resizeTimer)
@@ -81,98 +100,163 @@ export default {
   },
   methods: {
     srcset,
-    // Celular: misma idea que en computadora, en una página que se desplaza.
-    // La foto (más chica, al centro) se ubica donde termina el texto 1, de modo
-    // que este rodee su mitad de arriba por la izquierda; el texto 2 rodea su
-    // mitad de abajo por la derecha y sigue a todo el ancho por debajo
-    async layoutMobile() {
-      const root = this.$refs.root
-      const cs = getComputedStyle(root)
-      const padL = parseFloat(cs.paddingLeft)
-      const padT = parseFloat(cs.paddingTop)
-      const padB = parseFloat(cs.paddingBottom)
-      const W = root.clientWidth - padL - parseFloat(cs.paddingRight)
-      const pw = W * MOBILE_PHOTO_WIDTH
-      const ph = pw / PHOTO_RATIO
-      const px = padL + (W - pw) / 2
-      const full = { left: padL + 'px', width: W + 'px' }
-
-      // Texto 1 arriba, a todo el ancho; el recorte deja el lugar de la foto
-      // desde photoTop. Se baja photoTop de a una línea hasta que el texto
-      // termine a la altura de la mitad de la foto (cuanto más abajo está el
-      // recorte, más líneas anchas hay y antes termina el texto)
-      const line = parseFloat(getComputedStyle(this.$refs.text1).lineHeight) || 16
-      this.box1 = { ...full, top: padT + 'px' }
-      let photoTop = padT
-      for (let i = 0; i < 60; i++) {
-        this.cut1 = { top: photoTop - padT, width: padL + W - px + GAP, height: ph + GAP }
-        await this.$nextTick()
-        // Fin real del texto: la marca después de la última palabra (el alto
-        // del párrafo no sirve porque incluye los flotantes del recorte)
-        const mark = this.$refs.end1
-        const end = padT + mark.offsetTop + mark.offsetHeight
-        if (end - photoTop <= ph / 2) break
-        photoTop += line
-      }
-      this.photoStyle = { left: px + 'px', top: photoTop + 'px', width: pw + 'px', height: ph + 'px' }
-
-      // Texto 2 desde la mitad de la foto, a su derecha y luego por debajo
-      const top2 = photoTop + ph / 2 + 6
-      this.box2 = { ...full, top: top2 + 'px' }
-      this.cut2 = { width: px + pw - padL + GAP, height: photoTop + ph - top2 + GAP }
-      await this.$nextTick()
-      const bottom = Math.max(top2 + this.$refs.text2.offsetHeight, photoTop + ph)
-
-      // Centrado vertical: si todo entra en la pantalla, se baja el bloque
-      // para que quede al medio (si no entra, empieza bajo el ícono)
-      const view = root.parentElement.clientHeight
-      const content = bottom - padT
-      const shift = Math.max(0, (view - content) / 2 - padT)
-      this.rootStyle = { height: bottom + padB + 'px', top: shift + 'px' }
-    },
-    // Ubica los textos alrededor de la foto y calcula los recortes
     layout() {
       const root = this.$refs.root
       if (!root) return
-      if (this.media.matches) {
-        this.layoutMobile()
-        return
-      }
-      this.photoStyle = {}
-      this.rootStyle = {}
-      // La caja de la foto sale de las mismas medidas del CSS (.manifesto-photo):
-      // medirla en pantalla fallaría durante el zoom de entrada del sitio
+      const mobile = this.media.matches
       const W = root.clientWidth
-      const H = root.clientHeight
-      const ph = H * PHOTO_HEIGHT
-      const pw = ph * PHOTO_RATIO
-      const photoBox = {
-        left: W / 2 - pw / 2,
-        top: H * PHOTO_CENTER_Y - ph / 2,
-        right: W / 2 + pw / 2,
-        bottom: H * PHOTO_CENTER_Y + ph / 2
+      const view = root.parentElement.clientHeight
+      const D = mobile
+        ? W - MOBILE_SIDE * 2
+        : Math.min(view * DESKTOP_DIAMETER.vh, W * DESKTOP_DIAMETER.vw)
+      // Círculo centrado en la pantalla (un poco más abajo en computadora,
+      // por el ícono); en celular empieza bajo el ícono si no entra
+      const top = mobile ? Math.max(100, (view - D) / 2) : (view - D) / 2 + view * 0.03
+      const circle = { cx: W / 2, cy: top + D / 2, r: D / 2 }
+      const pw = D * (mobile ? PHOTO_WIDTH.mobile : PHOTO_WIDTH.desktop)
+      const ph = pw / PHOTO_RATIO
+      const photo = {
+        left: circle.cx - pw / 2,
+        right: circle.cx + pw / 2,
+        top: circle.cy - ph / 2,
+        bottom: circle.cy + ph / 2
       }
-      const center = (photoBox.left + photoBox.right) / 2
+      this.photoStyle = {
+        left: photo.left + 'px',
+        top: photo.top + 'px',
+        width: pw + 'px',
+        height: ph + 'px'
+      }
+      this.rootStyle = mobile ? { height: Math.max(view, top + D + 60) + 'px' } : {}
 
-      // Texto 1: desde la izquierda hasta el centro de la foto. Por encima de
-      // la foto ocupa todo el ancho; a su altura, se corta en su borde izquierdo
-      const left1 = W * TEXT1_LEFT
-      const top1 = H * TEXT1_TOP
-      this.box1 = { left: left1 + 'px', top: top1 + 'px', width: center - left1 + 'px' }
-      this.cut1 = {
-        top: Math.max(0, photoBox.top - top1),
-        width: center - photoBox.left + GAP,
-        height: photoBox.bottom - photoBox.top + GAP
+      // Las dos esquinas de la esfera. Cada una da, para una línea entre y e
+      // y + lh, el tramo [desde, hasta] que puede ocupar (o null)
+      const half = (y, lh) => {
+        const dy = Math.max(Math.abs(y - circle.cy), Math.abs(y + lh - circle.cy))
+        return dy >= circle.r ? null : Math.sqrt(circle.r * circle.r - dy * dy)
+      }
+      const over = pw * CORNER_OVERLAP
+      const corners = [
+        {
+          // Arriba a la izquierda: borde izquierdo en el arco; por encima de la
+          // foto llega un poco sobre ella, a su altura se corta en su borde
+          from: circle.cy - circle.r,
+          to: circle.cy + ph * CORNER_REACH,
+          bounds: (y, lh) => {
+            const h = half(y, lh)
+            if (h === null) return null
+            const besidePhoto = y + lh > photo.top - GAP + EPS
+            return [circle.cx - h, besidePhoto ? photo.left - GAP : photo.left + over]
+          },
+          inner: 'right',
+          // Una línea termina justo donde empieza la foto (sin hueco encima)
+          align: photo.top - GAP
+        },
+        {
+          // Abajo a la derecha: el espejo
+          from: circle.cy - ph * CORNER_REACH,
+          to: circle.cy + circle.r,
+          bounds: (y, lh) => {
+            const h = half(y, lh)
+            if (h === null) return null
+            const besidePhoto = y < photo.bottom + GAP - EPS
+            return [besidePhoto ? photo.right + GAP : photo.right - over, circle.cx + h]
+          },
+          inner: 'left',
+          // Una línea empieza justo donde termina la foto (sin hueco debajo)
+          align: photo.bottom + GAP
+        }
+      ]
+      const tokens = [
+        [{ dot: true }, ...this.texts[0].split(/\s+/).map((text) => ({ text }))],
+        [...this.texts[1].split(/\s+/).map((text) => ({ text })), { dot: true }]
+      ]
+      const ctx = (this.canvas || (this.canvas = document.createElement('canvas'))).getContext('2d')
+
+      // La letra más grande con la que cada texto entra en su esquina; las
+      // dos usan la menor, para que tengan el mismo tamaño
+      const fit = (i) => {
+        let lo = FONT_MIN
+        let hi = FONT_MAX
+        for (let n = 0; n < 12; n++) {
+          const mid = (lo + hi) / 2
+          if (this.flow(tokens[i], ctx, mid, corners[i])) lo = mid
+          else hi = mid
+        }
+        return lo
+      }
+      const size = Math.min(fit(0), fit(1))
+      const a = this.flow(tokens[0], ctx, size, corners[0]) || []
+      const b = this.flow(tokens[1], ctx, size, corners[1]) || []
+      this.fontSize = size
+      this.placed = [...a, ...b]
+    },
+    // Acomoda las palabras en una esquina con letra de `size` px. Devuelve sus
+    // posiciones, o null si no entran
+    flow(tokens, ctx, size, corner) {
+      ctx.font = `${size}px ${FONT}`
+      const space = ctx.measureText(' ').width
+      const dotSize = size * 0.42
+      const dotWidth = size * 0.6
+      const widths = tokens.map((t) => (t.dot ? dotWidth : ctx.measureText(t.text).width))
+      const lh = size * LINE
+      const minSeg = size * MIN_SEGMENT_EM
+
+      // Tramos disponibles, línea por línea, de arriba a abajo. Las líneas se
+      // corren para que un borde entre dos de ellas caiga en corner.align
+      const shift = (((corner.align - corner.from) % lh) + lh) % lh
+      const segments = []
+      for (let y = corner.from + shift; y + lh <= corner.to + 0.01; y += lh) {
+        const range = corner.bounds(y, lh)
+        if (range && range[1] - range[0] >= minSeg) {
+          segments.push({ x: range[0], w: range[1] - range[0], y })
+        }
       }
 
-      // Texto 2: desde el centro de la foto hacia la derecha. A la altura de
-      // la foto se corta en su borde derecho; debajo, ocupa todo el ancho
-      const top2 = H * TEXT2_TOP
-      this.box2 = { left: center + 'px', top: top2 + 'px', width: W * TEXT2_RIGHT - center + 'px' }
-      this.cut2 = {
-        width: photoBox.right - center + GAP,
-        height: Math.max(0, photoBox.bottom - top2 + GAP)
+      // Llena los tramos en orden; cada uno se justifica (salvo el último o
+      // si quedaría muy estirado: ahí se pega al lado de la foto)
+      const words = []
+      let k = 0
+      for (let s = 0; s < segments.length && k < tokens.length; s++) {
+        const seg = segments[s]
+        const start = k
+        let used = 0
+        while (k < tokens.length) {
+          const add = (k > start ? space : 0) + widths[k]
+          if (used + add > seg.w) {
+            if (k === start) return null // una palabra no entra ni sola
+            break
+          }
+          used += add
+          k++
+        }
+        // Una línea con solo el punto rojo queda fea: se salta ese tramo
+        if (k - start === 1 && tokens[start].dot && k < tokens.length) {
+          k = start
+          continue
+        }
+        const count = k - start
+        const last = k >= tokens.length
+        const textWidth = used - space * (count - 1)
+        let gap = !last && count > 1 ? (seg.w - textWidth) / (count - 1) : space
+        let x = seg.x
+        if (last || gap > space * MAX_GAP) {
+          gap = space
+          const lineWidth = textWidth + space * (count - 1)
+          if (corner.inner === 'right') x = seg.x + seg.w - lineWidth
+        }
+        for (let j = start; j < k; j++) {
+          const t = tokens[j]
+          words.push({
+            ...t,
+            // El punto rojo va centrado en su lugar, a la altura de las letras
+            x: t.dot ? x + (dotWidth - dotSize) / 2 : x,
+            y: t.dot ? seg.y + (lh - dotSize) / 2 + size * 0.05 : seg.y + (lh - size) / 2
+          })
+          x += widths[j] + gap
+        }
       }
+      return k >= tokens.length ? words : null
     }
   }
 }
@@ -184,88 +268,42 @@ export default {
   inset: 0;
 }
 
-.manifesto-text {
-  position: absolute;
-  margin: 0;
-  font-family: 'Spectral', Georgia, 'Times New Roman', serif;
-  font-size: clamp(12px, 1.15vw, 17px);
-  line-height: 1.35;
-  color: #1a1a1a;
-}
-
-/* Cada texto se alinea contra la foto para que el corte siga su borde */
-.manifesto-text--1 {
-  text-align: right;
-}
-
-.manifesto-text--2 {
-  text-align: left;
-}
-
-/* Flotantes invisibles que dejan el lugar de la foto */
-.manifesto-cut {
-  display: block;
-}
-
-.manifesto-cut--spacer {
-  float: right;
-  width: 1px;
-  margin-right: -1px;
-}
-
-.manifesto-cut--right {
-  float: right;
-  clear: right;
-}
-
-.manifesto-cut--left {
-  float: left;
-}
-
-/* Foto al centro */
 .manifesto-photo {
   position: absolute;
-  left: 50%;
-  top: 52%;
-  translate: -50% -50%;
-  height: 30%;
-  aspect-ratio: 4 / 5;
   object-fit: cover;
   /* Encuadre en la cara y el torso */
   object-position: 60% 20%;
   display: block;
 }
 
+.manifesto-sphere {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  font-family: 'Spectral', Georgia, 'Times New Roman', serif;
+  line-height: 1;
+  color: #1a1a1a;
+}
+
+/* Cada palabra va en su lugar calculado */
+.manifesto-word {
+  position: absolute;
+  white-space: nowrap;
+}
+
 .manifesto-dot {
-  display: inline-block;
-  width: 0.55em;
-  height: 0.55em;
-  margin-left: 0.5em;
+  position: absolute;
+  width: 0.42em;
+  height: 0.42em;
   border-radius: 50%;
   background: #e8251b;
-  vertical-align: 0.05em;
 }
 
-.manifesto-dot--start {
-  margin: 0 0.5em 0 0;
-}
-
-/* Celular: la página se desplaza; las posiciones y el alto los calcula
-   layoutMobile, con la foto al centro y los textos rodeándola */
+/* Celular: la página se desplaza (el alto lo calcula layout) */
 @media (max-width: 700px) {
   .manifesto {
     position: relative;
     inset: auto;
-    padding: 110px 20px 60px;
-  }
-
-  .manifesto-photo {
-    translate: none;
-  }
-
-  .manifesto-text {
-    font-size: 12px;
-    line-height: 1.35;
   }
 }
 </style>
